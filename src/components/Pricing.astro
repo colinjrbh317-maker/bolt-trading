@@ -1,0 +1,76 @@
+---
+import { siteConfig } from "../data/config";
+
+const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
+const isSoldOut = spotsLeft <= 0;
+const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : siteConfig.stripeUrl;
+
+const benefits = [
+  "Stock alerts and options callouts — plus Bullseye bot setups",
+  "Options education channel and trading strategy breakdowns",
+  "Tech tips covering market structure and risk management",
+  "Ask-anything Q&A channel — no question too basic",
+  "418+ active members, daily recaps, giveaways, and real community",
+  "No contracts — cancel anytime, instant Discord access on signup",
+];
+---
+
+<section class="bg-navy-900">
+  <div class="section-container">
+    <div class="text-center mb-12 fade-in">
+      <h2 class="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+        One Membership.
+        <span class="text-gold-gradient"> Everything You Need.</span>
+      </h2>
+    </div>
+
+    <!-- Pricing Card -->
+    <div class="max-w-lg mx-auto fade-in">
+      <div class="relative rounded-2xl bg-navy-800 border-glow overflow-hidden">
+        <!-- Gold accent top bar -->
+        <div class="h-1 bg-gradient-to-r from-gold-500 via-gold-400 to-gold-500"></div>
+
+        <div class="p-8 md:p-10">
+          <!-- Price -->
+          <div class="text-center mb-8">
+            <div class="flex items-baseline justify-center gap-1">
+              <span class="text-5xl md:text-6xl font-black text-slate-100">$40</span>
+              <span class="text-xl text-slate-500">/month</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-2">Cancel anytime — no contracts</p>
+          </div>
+
+          <!-- Divider -->
+          <div class="h-px bg-navy-700 mb-8"></div>
+
+          <!-- Benefits list -->
+          <ul class="space-y-4 mb-10">
+            {benefits.map((benefit) => (
+              <li class="flex items-start gap-3">
+                <svg
+                  class="w-5 h-5 text-bull mt-0.5 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span class="text-slate-300">{benefit}</span>
+              </li>
+            ))}
+          </ul>
+
+          <!-- CTA -->
+          <a href={ctaUrl} class="btn-cta w-full text-center block">
+            {isSoldOut ? "Join the Waitlist" : "Join The Market Matchup — $40/mo"}
+          </a>
+
+          <p class="text-center text-sm text-slate-500 mt-4">
+            No hidden fees. Cancel with one click, anytime. You're in control.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

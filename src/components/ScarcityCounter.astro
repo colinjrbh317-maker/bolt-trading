@@ -1,0 +1,51 @@
+---
+import { siteConfig } from "../data/config";
+
+const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
+const isSoldOut = spotsLeft <= 0;
+const percentFilled = Math.round((siteConfig.spots.claimed / siteConfig.spots.total) * 100);
+const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : siteConfig.stripeUrl;
+---
+
+<section class="bg-navy-950">
+  <div class="section-container">
+    <div class="max-w-2xl mx-auto text-center fade-in">
+      <!-- Pulsing indicator -->
+      <div class="flex items-center justify-center gap-3 mb-6">
+        <span class="pulse-dot"></span>
+        <span class="text-sm font-semibold text-bull uppercase tracking-wider">Now Accepting Members</span>
+      </div>
+
+      <h2 class="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-6">
+        {isSoldOut ? (
+          <span class="text-bear">All Spots Are Filled.</span>
+        ) : (
+          <>
+            Only <span class="text-gold-gradient">{spotsLeft} Spots</span> Left This Round.
+          </>
+        )}
+      </h2>
+
+      <p class="text-lg text-slate-400 leading-relaxed mb-8 max-w-xl mx-auto">
+        We keep The Market Matchup small on purpose. A capped community means Bolt can actually
+        engage — answer your questions, review setups, and keep the signal-to-noise ratio high.
+        When these spots fill, the doors close until the next opening.
+      </p>
+
+      <!-- Progress bar -->
+      <div class="mb-3">
+        <div class="progress-bar">
+          <div class="progress-bar-fill" style={`width: ${percentFilled}%`}></div>
+        </div>
+      </div>
+      <p class="text-sm text-slate-500 mb-8">
+        <span class="text-gold-500 font-bold">{siteConfig.spots.claimed}</span> of {siteConfig.spots.total} spots claimed
+      </p>
+
+      <!-- CTA -->
+      <a href={ctaUrl} class="btn-cta">
+        {isSoldOut ? "Join the Waitlist" : "Claim Your Spot Now"}
+      </a>
+    </div>
+  </div>
+</section>

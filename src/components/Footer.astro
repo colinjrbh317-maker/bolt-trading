@@ -1,0 +1,53 @@
+---
+import { siteConfig } from "../data/config";
+---
+
+<footer class="bg-navy-950 border-t border-navy-800">
+  <div class="section-container py-12">
+    <!-- Logo + Social -->
+    <div class="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
+      <div class="flex items-center gap-3">
+        <img src="/bolt-logo.png" alt="Bolt Trades" width="40" height="40" class="w-10 h-10 rounded-full" />
+        <span class="font-bold text-slate-300">Bolt Trades</span>
+      </div>
+
+      <div class="flex items-center gap-4">
+        {siteConfig.tiktokUrl && (
+          <a
+            href={siteConfig.tiktokUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-slate-500 hover:text-gold-500 transition-colors"
+            aria-label="TikTok"
+          >
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.88-2.88 2.89 2.89 0 012.88-2.88c.28 0 .55.04.81.1v-3.52a6.37 6.37 0 00-.81-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.81a8.23 8.23 0 004.76 1.52V6.88a4.85 4.85 0 01-1-.19z" />
+            </svg>
+          </a>
+        )}
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="h-px bg-navy-800 mb-8"></div>
+
+    <!-- Disclaimer -->
+    <div class="text-xs text-slate-600 leading-relaxed max-w-3xl mx-auto text-center mb-6">
+      <p>
+        The Market Matchup by Bolt Trades is an educational trading community. Nothing shared
+        within this Discord server, on this website, or on any associated social media accounts
+        constitutes financial advice, investment advice, or a recommendation to buy or sell any
+        security. All trades and investment decisions are made at your own risk. Trading stocks
+        and options involves substantial risk of loss and is not suitable for every investor.
+        Past performance is not indicative of future results. You should consult with a licensed
+        financial advisor before making any investment decisions. Only trade with capital you can
+        afford to lose.
+      </p>
+    </div>
+
+    <!-- Copyright -->
+    <p class="text-center text-xs text-slate-600">
+      &copy; {new Date().getFullYear()} Bolt Trades LLC. All rights reserved.
+    </p>
+  </div>
+</footer>
