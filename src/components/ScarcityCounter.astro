@@ -1,10 +1,16 @@
 ---
 import { siteConfig } from "../data/config";
 
+interface Props {
+  stripeLink: string;
+}
+
+const { stripeLink } = Astro.props;
+
 const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
 const isSoldOut = spotsLeft <= 0;
 const percentFilled = Math.round((siteConfig.spots.claimed / siteConfig.spots.total) * 100);
-const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : siteConfig.stripeUrl;
+const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
 ---
 
 <section class="bg-navy-950">

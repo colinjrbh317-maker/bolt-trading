@@ -1,9 +1,16 @@
 ---
 import { siteConfig } from "../data/config";
 
+interface Props {
+  price: number;
+  stripeLink: string;
+}
+
+const { price, stripeLink } = Astro.props;
+
 const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
 const isSoldOut = spotsLeft <= 0;
-const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : siteConfig.stripeUrl;
+const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
 
 const benefits = [
   "Stock alerts and options callouts — plus Bullseye bot setups",
@@ -34,7 +41,7 @@ const benefits = [
           <!-- Price -->
           <div class="text-center mb-8">
             <div class="flex items-baseline justify-center gap-1">
-              <span class="text-5xl md:text-6xl font-black text-slate-100">$40</span>
+              <span class="text-5xl md:text-6xl font-black text-slate-100">${price}</span>
               <span class="text-xl text-slate-500">/month</span>
             </div>
             <p class="text-sm text-slate-500 mt-2">Cancel anytime — no contracts</p>
@@ -63,7 +70,7 @@ const benefits = [
 
           <!-- CTA -->
           <a href={ctaUrl} class="btn-cta w-full text-center block">
-            {isSoldOut ? "Join the Waitlist" : "Join The Market Matchup — $40/mo"}
+            {isSoldOut ? "Join the Waitlist" : `Join The Market Matchup — $${price}/mo`}
           </a>
 
           <p class="text-center text-sm text-slate-500 mt-4">

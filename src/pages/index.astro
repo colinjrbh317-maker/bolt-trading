@@ -1,30 +1,8 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import Hero from "../components/Hero.astro";
-import ProblemSection from "../components/ProblemSection.astro";
-import SolutionSection from "../components/SolutionSection.astro";
-import Features from "../components/Features.astro";
-import Testimonials from "../components/Testimonials.astro";
-import ScarcityCounter from "../components/ScarcityCounter.astro";
-import Pricing from "../components/Pricing.astro";
-import RiskReversal from "../components/RiskReversal.astro";
-import FAQ from "../components/FAQ.astro";
-import FinalCTA from "../components/FinalCTA.astro";
-import Footer from "../components/Footer.astro";
+import Landing from "../components/Landing.astro";
+
+const price = 40;
+const stripeLink = import.meta.env.STRIPE_LINK_A || "";
 ---
 
-<Layout>
-  <main>
-    <Hero />
-    <ProblemSection />
-    <SolutionSection />
-    <Features />
-    <Testimonials />
-    <ScarcityCounter />
-    <Pricing />
-    <RiskReversal />
-    <FAQ />
-    <FinalCTA />
-  </main>
-  <Footer />
-</Layout>
+<Landing price={price} stripeLink={stripeLink} variant="a" />

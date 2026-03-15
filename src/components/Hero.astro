@@ -1,10 +1,17 @@
 ---
 import { siteConfig } from "../data/config";
 
+interface Props {
+  price: number;
+  stripeLink: string;
+}
+
+const { price, stripeLink } = Astro.props;
+
 const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
 const isSoldOut = spotsLeft <= 0;
-const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : siteConfig.stripeUrl;
-const ctaText = isSoldOut ? "Join the Waitlist" : "Join The Market Matchup — $40/mo";
+const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
+const ctaText = isSoldOut ? "Join the Waitlist" : `Join The Market Matchup — $${price}/mo`;
 ---
 
 <section class="relative bg-candlestick min-h-[90vh] flex items-center">

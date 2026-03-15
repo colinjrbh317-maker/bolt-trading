@@ -1,0 +1,38 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Hero from "./Hero.astro";
+import ProblemSection from "./ProblemSection.astro";
+import SolutionSection from "./SolutionSection.astro";
+import Features from "./Features.astro";
+import Testimonials from "./Testimonials.astro";
+import ScarcityCounter from "./ScarcityCounter.astro";
+import Pricing from "./Pricing.astro";
+import RiskReversal from "./RiskReversal.astro";
+import FAQ from "./FAQ.astro";
+import FinalCTA from "./FinalCTA.astro";
+import Footer from "./Footer.astro";
+
+interface Props {
+  price: number;
+  stripeLink: string;
+  variant: string;
+}
+
+const { price, stripeLink, variant } = Astro.props;
+---
+
+<Layout>
+  <main>
+    <Hero price={price} stripeLink={stripeLink} />
+    <ProblemSection />
+    <SolutionSection />
+    <Features />
+    <Testimonials />
+    <ScarcityCounter stripeLink={stripeLink} />
+    <Pricing price={price} stripeLink={stripeLink} />
+    <RiskReversal />
+    <FAQ />
+    <FinalCTA price={price} stripeLink={stripeLink} />
+  </main>
+  <Footer />
+</Layout>
