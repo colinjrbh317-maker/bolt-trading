@@ -4,7 +4,8 @@ import { parseDeviceType, isValidEventType } from "../../lib/analytics/parse";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    const body = await request.json();
+    const text = await request.text();
+    const body = JSON.parse(text);
 
     const { session_id, visitor_id, event_type, event_data, url, referrer } = body;
 

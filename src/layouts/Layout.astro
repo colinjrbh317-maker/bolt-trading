@@ -50,7 +50,7 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
   </head>
-  <body class="min-h-screen overflow-x-hidden" data-variant={pageVariant}>
+  <body class="min-h-screen overflow-x-hidden" data-variant={pageVariant} data-no-track={noTrack ? "true" : undefined}>
     <slot />
 
     <!-- Vercel Analytics -->
@@ -73,9 +73,9 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
     </script>
 
     <!-- Custom analytics tracker -->
-    {!noTrack && (
-      <script>
-        (function() {
+    <script>
+      (function() {
+          if (document.body.dataset.noTrack === "true") return;
           const V = document.body.dataset.variant || "a";
 
           // UUID fallback for older iOS/browsers
@@ -114,7 +114,7 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
               referrer: document.referrer || null,
             });
             if (navigator.sendBeacon) {
-              navigator.sendBeacon("/api/track", new Blob([payload], { type: "application/json" }));
+              navigator.sendBeacon("/api/track", payload);
             } else {
               fetch("/api/track", { method: "POST", body: payload, headers: { "Content-Type": "application/json" }, keepalive: true });
             }
@@ -168,6 +168,5 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
           });
         })();
       </script>
-    )}
   </body>
 </html>
