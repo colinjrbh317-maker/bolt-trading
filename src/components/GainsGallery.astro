@@ -2,7 +2,8 @@
 const boltsGains = [
   { src: "/gains/IMG_7918.jpg", alt: "QQQ $602 Call closed for +$4,590 profit, +30%", label: "QQQ Call", pct: "+$4,590" },
   { src: "/gains/IMG_7921.jpg", alt: "SPXW 6645 Put closed for +$2,060 realized profit", label: "SPXW Put", pct: "+$2,060" },
-  { src: "/gains/IMG_7919.PNG", alt: "IWM options position up +$2,130, +100.95%", label: "IWM Options", pct: "+100%" },
+  { src: "/gains/iwm-249-put.jpg", alt: "IWM $249 Put up +$1,140, +100%", label: "IWM Put", pct: "+100%" },
+  { src: "/gains/iwm-options-new.jpg", alt: "IWM options +$2,130, +100.95%", label: "IWM Options", pct: "+$2,130" },
 ];
 
 const memberGains = [
@@ -27,7 +28,7 @@ const memberGains = [
       <h3 class="text-lg font-bold text-slate-200 mb-4 fade-in">
         <span class="text-gold-500">Bolt's Alerts</span> — These are the setups you get
       </h3>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {boltsGains.map((g) => (
           <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
             <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="lazy" />

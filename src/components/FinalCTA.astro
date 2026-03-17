@@ -25,7 +25,7 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
       </h2>
 
       <p class="text-lg text-slate-400 leading-relaxed mb-10 max-w-2xl mx-auto">
-        {spotsLeft} spots. One community. The traders inside are already positioned.
+        <span data-spots-left>{spotsLeft} Spots</span> left. One community. The traders inside are already positioned.
         The only question is whether you'll keep watching the recap — or start trading the setup.
       </p>
 
@@ -33,11 +33,9 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
         {isSoldOut ? "Join the Waitlist" : `Join The Market Matchup Now — $${price}/mo`}
       </a>
 
-      {!isSoldOut && (
-        <p class="text-sm text-slate-500 mt-4">
-          Only {spotsLeft} spots remaining this round
-        </p>
-      )}
+      <p class="text-sm text-slate-500 mt-4" data-spots-remaining>
+        Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Cancel anytime
+      </p>
     </div>
   </div>
 </section>

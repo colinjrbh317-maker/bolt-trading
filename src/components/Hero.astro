@@ -57,11 +57,9 @@ const ctaText = isSoldOut ? "Join the Waitlist" : `Join The Market Matchup — $
         {ctaText}
       </a>
 
-      {!isSoldOut && (
-        <p class="text-sm text-slate-500">
-          Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Cancel anytime
-        </p>
-      )}
+      <p class="text-sm text-slate-500" data-spots-remaining>
+        Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Cancel anytime
+      </p>
     </div>
   </div>
 

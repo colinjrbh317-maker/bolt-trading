@@ -23,6 +23,6 @@ export const siteConfig = {
   priceInterval: "month",
 
   // Bolt's socials
-  tiktokUrl: "https://tiktok.com/@bolttrades",
+  tiktokUrl: "https://tiktok.com/@bolt.trades",
   discordInvite: "", // The Discord invite link (sent after payment)
 };

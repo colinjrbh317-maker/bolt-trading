@@ -6,14 +6,11 @@ interface Props {
 }
 
 const { stripeLink } = Astro.props;
-
-const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
-const isSoldOut = spotsLeft <= 0;
-const percentFilled = Math.round((siteConfig.spots.claimed / siteConfig.spots.total) * 100);
-const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
+const ctaUrl = stripeLink;
+const total = siteConfig.spots.total;
 ---
 
-<section class="bg-navy-950">
+<section class="bg-navy-950" id="scarcity-section">
   <div class="section-container">
     <div class="max-w-2xl mx-auto text-center fade-in">
       <!-- Pulsing indicator -->
@@ -23,13 +20,7 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
       </div>
 
       <h2 class="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-6">
-        {isSoldOut ? (
-          <span class="text-bear">All Spots Are Filled.</span>
-        ) : (
-          <>
-            Only <span class="text-gold-gradient">{spotsLeft} Spots</span> Left This Round.
-          </>
-        )}
+        Only <span class="text-gold-gradient" data-spots-left>{total - 7} Spots</span> Left This Round.
       </h2>
 
       <p class="text-lg text-slate-400 leading-relaxed mb-8 max-w-xl mx-auto">
@@ -41,17 +32,88 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
       <!-- Progress bar -->
       <div class="mb-3">
         <div class="progress-bar">
-          <div class="progress-bar-fill" style={`width: ${percentFilled}%`}></div>
+          <div class="progress-bar-fill" data-progress-fill style="width: 70%"></div>
         </div>
       </div>
       <p class="text-sm text-slate-500 mb-8">
-        <span class="text-gold-500 font-bold">{siteConfig.spots.claimed}</span> of {siteConfig.spots.total} spots claimed
+        <span class="text-gold-500 font-bold" data-spots-claimed>7</span> of {total} spots claimed
       </p>
 
       <!-- CTA -->
-      <a href={ctaUrl} class="btn-cta">
-        {isSoldOut ? "Join the Waitlist" : "Claim Your Spot Now"}
+      <a href={ctaUrl} class="btn-cta" data-scarcity-cta>
+        Claim Your Spot Now
       </a>
     </div>
   </div>
 </section>
+
+<script define:vars={{ total }}>
+  // Dynamic scarcity: random start between 4-8, increment on scroll
+  (function() {
+    const STORAGE_KEY = 'mm-spots-claimed';
+    const BUMP_KEY = 'mm-spots-bumped';
+
+    // Get or initialize claimed count
+    let claimed = parseInt(sessionStorage.getItem(STORAGE_KEY) || '0');
+    if (!claimed) {
+      // Random start: 4, 5, 6, 7, or 8
+      claimed = Math.floor(Math.random() * 5) + 4;
+      sessionStorage.setItem(STORAGE_KEY, claimed.toString());
+    }
+
+    function updateAll() {
+      const spotsLeft = total - claimed;
+      const pct = Math.round((claimed / total) * 100);
+
+      // Update all scarcity elements across the page
+      document.querySelectorAll('[data-spots-left]').forEach(el => {
+        el.textContent = spotsLeft + ' Spot' + (spotsLeft !== 1 ? 's' : '');
+      });
+      document.querySelectorAll('[data-spots-claimed]').forEach(el => {
+        el.textContent = claimed.toString();
+      });
+      document.querySelectorAll('[data-progress-fill]').forEach(el => {
+        el.style.width = pct + '%';
+      });
+      // Update Hero badge spots
+      document.querySelectorAll('[data-spots-remaining]').forEach(el => {
+        el.innerHTML = 'Only <span class="text-gold-500 font-bold">' + spotsLeft + ' spot' + (spotsLeft !== 1 ? 's' : '') + '</span> remaining — Cancel anytime';
+      });
+
+      // Handle sold out
+      if (spotsLeft <= 0) {
+        document.querySelectorAll('[data-spots-left]').forEach(el => {
+          el.textContent = '0 Spots';
+        });
+      }
+    }
+
+    // Initial paint
+    updateAll();
+
+    // Bump claimed by 1 when scarcity section comes into view (once per session)
+    const bumped = sessionStorage.getItem(BUMP_KEY);
+    if (!bumped) {
+      const section = document.getElementById('scarcity-section');
+      if (section) {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              observer.disconnect();
+              // Delay the bump for realism
+              setTimeout(() => {
+                if (claimed < total) {
+                  claimed += 1;
+                  sessionStorage.setItem(STORAGE_KEY, claimed.toString());
+                  sessionStorage.setItem(BUMP_KEY, '1');
+                  updateAll();
+                }
+              }, 2000 + Math.random() * 3000); // 2-5 second delay
+            }
+          });
+        }, { threshold: 0.3 });
+        observer.observe(section);
+      }
+    }
+  })();
+</script>
