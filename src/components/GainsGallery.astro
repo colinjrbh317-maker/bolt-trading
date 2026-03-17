@@ -1,13 +1,14 @@
 ---
-const boltsGains = [
+const techsanAlerts = [
   { src: "/gains/IMG_7918.jpg", alt: "QQQ $602 Call closed for +$4,590 profit, +30%", label: "QQQ Call", pct: "+$4,590" },
-  { src: "/gains/IMG_7921.jpg", alt: "SPXW 6645 Put closed for +$2,060 realized profit", label: "SPXW Put", pct: "+$2,060" },
-  { src: "/gains/iwm-249-put.jpg", alt: "IWM $249 Put up +$1,140, +100%", label: "IWM Put", pct: "+100%" },
-  { src: "/gains/iwm-options-new.jpg", alt: "IWM options +$2,130, +100.95%", label: "IWM Options", pct: "+$2,130" },
+  { src: "/gains/techsan-slv-933.jpg", alt: "Techsan SLV $100 Call 20 Mar 26 — +933.33%", label: "SLV $100 Call", pct: "+933.33%" },
 ];
 
 const memberGains = [
-  { src: "/gains/IMG_7928.jpg", alt: "Portfolio up 315.62% in one week", label: "Weekly portfolio", pct: "+315%" },
+  { src: "/gains/miikeeyb-slv-765.jpg", alt: "MiikeeyB SLV $100 Call 3/20 — +$765 realized profit", label: "SLV Call (MiikeeyB)", pct: "+$765" },
+  { src: "/gains/meowmaxin-1363.jpg", alt: "MeowMaxin portfolio +$1,363.42 (32.42%) in one day", label: "Portfolio Day (MeowMaxin)", pct: "+$1,363" },
+  { src: "/gains/gold-portfolio-46k.png", alt: "$46,686 Gold portfolio +$5,265 (12.71%) today", label: "Gold Portfolio", pct: "+12.71%" },
+  { src: "/gains/IMG_7928.jpg", alt: "Portfolio up 315.62% in one week", label: "Weekly Portfolio", pct: "+315%" },
 ];
 ---
 
@@ -15,21 +16,24 @@ const memberGains = [
   <div class="section-container">
     <div class="text-center mb-12 fade-in">
       <h2 class="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-        Real Trades.
-        <span class="text-gold-gradient"> Real Results.</span>
+        Members With Big Gains
+        <span class="text-gold-gradient"> From The Server.</span>
       </h2>
       <p class="text-slate-400 mt-4 text-lg max-w-2xl mx-auto">
-        Screenshots straight from the Discord. Wins, losses, and everything in between.
+        Screenshots straight from the Discord. Real trades, real money.
       </p>
     </div>
 
-    <!-- Bolt's Trades -->
+    <!-- Techsan's Options Alerts -->
     <div class="mb-12">
-      <h3 class="text-lg font-bold text-slate-200 mb-4 fade-in">
-        <span class="text-gold-500">Bolt's Alerts</span> — These are the setups you get
+      <h3 class="text-lg font-bold text-slate-200 mb-1 fade-in">
+        <span class="text-gold-500">Techsan's Options Alerts</span> — Our dedicated options trader
       </h3>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {boltsGains.map((g) => (
+      <p class="text-sm text-slate-400 mb-4">
+        Techsan tracks every trade publicly for accountability. January: <span class="text-bull font-semibold">80% success rate</span>. February: <span class="text-bull font-semibold">79% success rate</span>.
+      </p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {techsanAlerts.map((g) => (
           <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
             <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="lazy" />
             <div class="p-3 flex justify-between items-center">
@@ -41,19 +45,44 @@ const memberGains = [
       </div>
     </div>
 
+    <!-- Techsan Track Records -->
+    <div class="mb-12">
+      <h3 class="text-lg font-bold text-slate-200 mb-4 fade-in">
+        <span class="text-gold-500">Techsan's Track Record</span> — Posted publicly for accountability
+      </h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
+          <img src="/gains/techsan-january-track.jpg" alt="Techsan January 2026 track record — 80% success rate" class="w-full object-contain bg-navy-900" loading="lazy" />
+          <div class="p-3 flex justify-between items-center">
+            <span class="text-sm text-slate-300">January 2026</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">80% Win Rate</span>
+          </div>
+        </div>
+        <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
+          <img src="/gains/techsan-february-track.jpg" alt="Techsan February 2026 track record — 79% success rate" class="w-full object-contain bg-navy-900" loading="lazy" />
+          <div class="p-3 flex justify-between items-center">
+            <span class="text-sm text-slate-300">February 2026</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">79% Win Rate</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Member Gains -->
     <div class="mb-12">
       <h3 class="text-lg font-bold text-slate-200 mb-4 fade-in">
         <span class="text-bull">Member Gains</span> — The community wins together
       </h3>
-      <div class="max-w-sm mx-auto">
-        <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-          <img src={memberGains[0].src} alt={memberGains[0].alt} class="w-full object-contain bg-navy-900" loading="lazy" />
-          <div class="p-3 flex justify-between items-center">
-            <span class="text-sm text-slate-300">{memberGains[0].label}</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">{memberGains[0].pct}</span>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {memberGains.map((g) => (
+          <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
+            <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="lazy" />
+            <div class="p-3 flex justify-between items-center">
+              <span class="text-sm text-slate-300">{g.label}</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">{g.pct}</span>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     </div>
 
