@@ -75,7 +75,7 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
     <!-- Custom analytics tracker -->
     <script>
       (function() {
-          if (document.body.dataset.noTrack === "true") return;
+          if (location.pathname.startsWith("/dashboard")) return;
           const V = document.body.dataset.variant || "a";
 
           // UUID fallback for older iOS/browsers
