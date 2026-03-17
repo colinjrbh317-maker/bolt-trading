@@ -8,7 +8,7 @@ function getDb() {
 
 export async function query(sql: string, params: unknown[] = []) {
   const db = getDb();
-  return db(sql, params);
+  return db.query(sql, params);
 }
 
 export { getDb };
