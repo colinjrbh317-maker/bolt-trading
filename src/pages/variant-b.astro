@@ -1,8 +1,9 @@
 ---
 import Landing from "../components/Landing.astro";
+import { siteConfig } from "../data/config";
 
 const price = 40;
-const stripeLink = import.meta.env.STRIPE_LINK_B || "";
+const stripeLink = import.meta.env.STRIPE_LINK_B || siteConfig.stripeUrl;
 ---
 
 <Landing price={price} stripeLink={stripeLink} variant="b" />

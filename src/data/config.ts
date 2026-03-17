@@ -3,8 +3,8 @@
 // Non-developers: just change the numbers and text below.
 
 export const siteConfig = {
-  // Stripe checkout URL — replace with your actual Stripe payment link
-  stripeUrl: "https://buy.stripe.com/YOUR_STRIPE_LINK_HERE",
+  // Stripe checkout URL
+  stripeUrl: "https://buy.stripe.com/00w8wR0HCbBG4OfeNy3840F",
 
   // Scarcity — Rolling cohort
   spots: {
