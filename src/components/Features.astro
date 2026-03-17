@@ -1,4 +1,15 @@
 ---
+import { siteConfig } from "../data/config";
+
+interface Props {
+  stripeLink: string;
+}
+
+const { stripeLink } = Astro.props;
+const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
+const isSoldOut = spotsLeft <= 0;
+const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
+
 const features = [
   {
     icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`,
@@ -48,6 +59,13 @@ const features = [
           <p class="text-slate-400 leading-relaxed">{feature.description}</p>
         </div>
       ))}
+    </div>
+
+    <!-- CTA -->
+    <div class="text-center mt-10 fade-in">
+      <a href={ctaUrl} class="btn-cta">
+        {isSoldOut ? "Join the Waitlist" : "Get All of This — $40/mo"}
+      </a>
     </div>
   </div>
 </section>

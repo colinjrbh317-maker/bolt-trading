@@ -1,4 +1,14 @@
 ---
+import { siteConfig } from "../data/config";
+
+interface Props {
+  stripeLink: string;
+}
+
+const { stripeLink } = Astro.props;
+const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
+const isSoldOut = spotsLeft <= 0;
+const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
 ---
 
 <section class="bg-navy-900">
@@ -25,10 +35,15 @@
 
         <p class="text-xs text-slate-500 mb-6">Since the start of March 2026</p>
 
-        <p class="text-lg text-slate-300 leading-relaxed max-w-xl mx-auto">
+        <p class="text-lg text-slate-300 leading-relaxed max-w-xl mx-auto mb-8">
           Losses happen — that's trading. We use stop losses to keep them small and
           <span class="text-gold-400 font-semibold">let our gains run big.</span>
         </p>
+
+        <!-- CTA -->
+        <a href={ctaUrl} class="btn-cta">
+          {isSoldOut ? "Join the Waitlist" : "Start Trading With Us — $40/mo"}
+        </a>
       </div>
     </div>
   </div>

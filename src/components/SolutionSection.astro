@@ -1,4 +1,14 @@
 ---
+import { siteConfig } from "../data/config";
+
+interface Props {
+  stripeLink: string;
+}
+
+const { stripeLink } = Astro.props;
+const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
+const isSoldOut = spotsLeft <= 0;
+const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
 ---
 
 <section class="bg-navy-900">
@@ -47,10 +57,15 @@
         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-bull/10 text-bull border border-bull/20">Beginners Welcome</span>
       </div>
 
-      <p class="text-lg md:text-xl text-slate-300 font-medium">
+      <p class="text-lg md:text-xl text-slate-300 font-medium mb-8">
         We trade options, shares, and long-term swings. Whether you're brand new or experienced, there's a place for you.
         Members stick around for the culture, not just the charts — real friendships, real connections, real growth.
       </p>
+
+      <!-- CTA -->
+      <a href={ctaUrl} class="btn-cta">
+        {isSoldOut ? "Join the Waitlist" : "Get Inside — $40/mo"}
+      </a>
     </div>
   </div>
 </section>

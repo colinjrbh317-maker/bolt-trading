@@ -27,11 +27,11 @@ const { price, stripeLink, variant } = Astro.props;
   <main>
     <Hero price={price} stripeLink={stripeLink} />
     <ProblemSection />
-    <SolutionSection />
-    <Features />
+    <Testimonials stripeLink={stripeLink} />
+    <SolutionSection stripeLink={stripeLink} />
     <GainsGallery />
-    <TrackRecord />
-    <Testimonials />
+    <TrackRecord stripeLink={stripeLink} />
+    <Features stripeLink={stripeLink} />
     <ScarcityCounter stripeLink={stripeLink} />
     <Pricing price={price} stripeLink={stripeLink} />
     <RiskReversal />
