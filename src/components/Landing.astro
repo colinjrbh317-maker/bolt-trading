@@ -4,6 +4,8 @@ import Hero from "./Hero.astro";
 import ProblemSection from "./ProblemSection.astro";
 import SolutionSection from "./SolutionSection.astro";
 import Features from "./Features.astro";
+import GainsGallery from "./GainsGallery.astro";
+import TrackRecord from "./TrackRecord.astro";
 import Testimonials from "./Testimonials.astro";
 import ScarcityCounter from "./ScarcityCounter.astro";
 import Pricing from "./Pricing.astro";
@@ -27,6 +29,8 @@ const { price, stripeLink, variant } = Astro.props;
     <ProblemSection />
     <SolutionSection />
     <Features />
+    <GainsGallery />
+    <TrackRecord />
     <Testimonials />
     <ScarcityCounter stripeLink={stripeLink} />
     <Pricing price={price} stripeLink={stripeLink} />

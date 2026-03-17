@@ -1,5 +1,5 @@
 ---
-import { topTestimonials } from "../data/testimonials";
+import { screenshotTestimonials } from "../data/testimonials";
 ---
 
 <section class="bg-navy-900">
@@ -7,59 +7,28 @@ import { topTestimonials } from "../data/testimonials";
     <div class="text-center mb-12 fade-in">
       <h2 class="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
         Don't Take Our Word for It.
-        <span class="text-gold-gradient"> Hear From the Community.</span>
+        <span class="text-gold-gradient"> Real Screenshots. Real Gains.</span>
       </h2>
+      <p class="text-slate-400 mt-4 text-lg max-w-2xl mx-auto">
+        These are actual screenshots from our Discord members — unedited, unfiltered.
+      </p>
     </div>
 
-    <!-- Featured testimonial (AlvinT11 with image) -->
-    <div class="max-w-3xl mx-auto mb-10 fade-in">
-      <div class="card-feature relative overflow-hidden">
-        <div class="md:flex gap-6 items-start">
-          <div class="md:w-48 shrink-0 mb-4 md:mb-0">
+    <!-- Mobile: horizontal scroll. Desktop: grid -->
+    <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 lg:grid-cols-5 md:overflow-visible md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+      {screenshotTestimonials.map((t) => (
+        <div class="snap-center shrink-0 w-60 md:w-auto fade-in">
+          <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 h-full">
             <img
-              src="/testimonial-alvin.jpg"
-              alt="AlvinT11's dream car purchased from trading earnings"
-              class="w-full h-48 md:h-56 object-cover rounded-xl"
+              src={t.imagePath}
+              alt={t.alt}
+              class="w-full h-80 md:h-96 object-cover object-top"
               loading="lazy"
             />
-          </div>
-          <div class="flex-1">
-            <svg
-              class="w-8 h-8 text-gold-500/30 mb-3"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10H14.017zM0 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151C7.546 6.068 5.983 8.789 5.983 11h4v10H0z" />
-            </svg>
-            <p class="text-slate-300 leading-relaxed mb-4 text-[15px]">
-              "{topTestimonials[0].quote}"
-            </p>
-            <div>
-              <p class="font-bold text-slate-100">@{topTestimonials[0].username}</p>
-              <p class="text-sm text-slate-500">{topTestimonials[0].date}</p>
+            <div class="p-3 text-center">
+              <p class="text-sm font-bold text-gold-400">{t.highlight}</p>
+              <p class="text-xs text-slate-500 mt-1">@{t.username}</p>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Remaining top testimonials -->
-    <div class="grid md:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto">
-      {topTestimonials.slice(1).map((t) => (
-        <div class="card-feature fade-in">
-          <svg
-            class="w-8 h-8 text-gold-500/30 mb-4"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10H14.017zM0 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151C7.546 6.068 5.983 8.789 5.983 11h4v10H0z" />
-          </svg>
-
-          <p class="text-slate-300 leading-relaxed mb-6 text-[15px]">"{t.quote}"</p>
-
-          <div class="mt-auto">
-            <p class="font-bold text-slate-100">@{t.username}</p>
-            <p class="text-sm text-slate-500">{t.date}</p>
           </div>
         </div>
       ))}

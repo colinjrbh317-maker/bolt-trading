@@ -16,7 +16,7 @@ export const siteConfig = {
   waitlistUrl: "", // Optional: link to a waitlist form
 
   // Social proof
-  memberCount: 418, // "X+ active traders"
+  memberCount: 400, // "X+ active traders"
 
   // Pricing
   price: 40,
