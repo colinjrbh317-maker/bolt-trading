@@ -449,12 +449,16 @@
     margin-right: auto;
     padding-left: var(--spacing-container-x);
     padding-right: var(--spacing-container-x);
+    padding-top: var(--spacing-section-y);
+    padding-bottom: var(--spacing-section-y);
   }
 
   @media (min-width: 1024px) {
     .section-container {
       padding-left: var(--spacing-container-x-lg);
       padding-right: var(--spacing-container-x-lg);
+      padding-top: var(--spacing-section-y-lg);
+      padding-bottom: var(--spacing-section-y-lg);
     }
   }
 

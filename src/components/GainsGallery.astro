@@ -32,7 +32,7 @@ const memberGains = [
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {boltsGains.map((g) => (
           <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-            <img src={g.src} alt={g.alt} class="w-full h-64 object-cover object-top" loading="lazy" />
+            <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="lazy" />
             <div class="p-3 flex justify-between items-center">
               <span class="text-sm text-slate-300">{g.label}</span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">{g.pct}</span>
@@ -50,7 +50,7 @@ const memberGains = [
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {memberGains.map((g) => (
           <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-            <img src={g.src} alt={g.alt} class="w-full h-64 object-cover object-top" loading="lazy" />
+            <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="lazy" />
             <div class="p-3 flex justify-between items-center">
               <span class="text-sm text-slate-300">{g.label}</span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">{g.pct}</span>
@@ -66,7 +66,7 @@ const memberGains = [
         <span class="text-bear">We Keep Losses Small</span>
       </h3>
       <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-        <img src="/gains/IMG_7922.jpg" alt="BIAF stop loss triggered at -$98.50 (-7.89%) while MARA calls profit" class="w-full h-64 object-cover object-top" loading="lazy" />
+        <img src="/gains/IMG_7922.jpg" alt="BIAF stop loss triggered at -$98.50 (-7.89%) while MARA calls profit" class="w-full object-contain bg-navy-900" loading="lazy" />
         <div class="p-3 text-center">
           <p class="text-sm text-slate-400">Stop loss triggered at <span class="text-bear font-bold">-7.89%</span> — while wins keep running</p>
         </div>
