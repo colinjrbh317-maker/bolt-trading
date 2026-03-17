@@ -29,7 +29,7 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
         The only question is whether you'll keep watching the recap — or start trading the setup.
       </p>
 
-      <a href={ctaUrl} class="btn-cta btn-cta-lg">
+      <a href={ctaUrl} class="btn-cta btn-cta-lg" data-track="cta" data-track-label="final_cta">
         {isSoldOut ? "Join the Waitlist" : `Join The Market Matchup Now — $${price}/mo`}
       </a>
 

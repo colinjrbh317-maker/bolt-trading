@@ -41,7 +41,7 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
         </p>
 
         <!-- CTA -->
-        <a href={ctaUrl} class="btn-cta">
+        <a href={ctaUrl} class="btn-cta" data-track="cta" data-track-label="track_record_cta">
           {isSoldOut ? "Join the Waitlist" : "Start Trading With Us — $40/mo"}
         </a>
       </div>

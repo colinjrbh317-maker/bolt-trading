@@ -53,7 +53,7 @@ const ctaText = isSoldOut ? "Join the Waitlist" : `Join The Market Matchup — $
 
     <!-- CTA -->
     <div class="flex flex-col items-center gap-4">
-      <a href={ctaUrl} class="btn-cta text-base md:text-lg">
+      <a href={ctaUrl} class="btn-cta text-base md:text-lg" data-track="cta" data-track-label="hero_cta">
         {ctaText}
       </a>
 

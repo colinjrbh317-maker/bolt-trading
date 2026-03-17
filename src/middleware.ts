@@ -42,6 +42,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.rewrite("/variant-c");
   }
 
+  // Store variant in locals for Layout access
+  context.locals.variant = variant;
+
   // Variant "a" serves the default index page
   return next();
 });

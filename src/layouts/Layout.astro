@@ -1,15 +1,23 @@
 ---
 import "../styles/global.css";
+import Analytics from "@vercel/analytics/astro";
 
 interface Props {
   title?: string;
   description?: string;
+  variant?: string;
+  noTrack?: boolean;
 }
 
 const {
   title = "The Market Matchup | Bolt Trades Private Discord",
   description = "Join Bolt's private Discord and trade alongside him in real time. Daily alerts, live calls, Q&A, and a community that moves together. Limited spots available.",
+  variant,
+  noTrack = false,
 } = Astro.props;
+
+// Get variant from props or middleware locals
+const pageVariant = variant || (Astro.locals as any).variant || "a";
 ---
 
 <!doctype html>
@@ -42,8 +50,11 @@ const {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
   </head>
-  <body class="min-h-screen overflow-x-hidden">
+  <body class="min-h-screen overflow-x-hidden" data-variant={pageVariant}>
     <slot />
+
+    <!-- Vercel Analytics -->
+    <Analytics />
 
     <!-- Fade-in scroll observer -->
     <script>
@@ -60,5 +71,94 @@ const {
 
       document.querySelectorAll(".fade-in").forEach((el) => observer.observe(el));
     </script>
+
+    <!-- Custom analytics tracker -->
+    {!noTrack && (
+      <script>
+        (function() {
+          const V = document.body.dataset.variant || "a";
+
+          // Persistent visitor ID
+          let vid = localStorage.getItem("mm_vid");
+          if (!vid) {
+            vid = crypto.randomUUID();
+            localStorage.setItem("mm_vid", vid);
+          }
+
+          // Session ID
+          let sid = sessionStorage.getItem("mm_sid");
+          if (!sid) {
+            sid = crypto.randomUUID();
+            sessionStorage.setItem("mm_sid", sid);
+          }
+
+          const pageLoad = Date.now();
+          let maxScroll = 0;
+
+          function track(type: string, data: Record<string, unknown> = {}) {
+            const payload = JSON.stringify({
+              session_id: sid,
+              visitor_id: vid,
+              event_type: type,
+              event_data: data,
+              url: location.href,
+              referrer: document.referrer || null,
+            });
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon("/api/track", new Blob([payload], { type: "application/json" }));
+            } else {
+              fetch("/api/track", { method: "POST", body: payload, headers: { "Content-Type": "application/json" }, keepalive: true });
+            }
+          }
+
+          // Track pageview with UTM params
+          const params = new URLSearchParams(location.search);
+          const utms: Record<string, string> = {};
+          for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) {
+            const val = params.get(key);
+            if (val) utms[key] = val;
+          }
+          track("pageview", utms);
+
+          // Track scroll depth
+          let scrollTimer: ReturnType<typeof setTimeout>;
+          window.addEventListener("scroll", () => {
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => {
+              const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+              if (scrollHeight > 0) {
+                const depth = Math.round((window.scrollY / scrollHeight) * 100);
+                if (depth > maxScroll) maxScroll = depth;
+              }
+            }, 500);
+          }, { passive: true });
+
+          // Track CTA clicks
+          document.addEventListener("click", (e) => {
+            const el = (e.target as HTMLElement).closest("[data-track]");
+            if (el && el.getAttribute("data-track") === "cta") {
+              track("cta_click", { button: el.getAttribute("data-track-label") || "unknown" });
+            }
+          });
+
+          // Track scroll depth + time on page on unload
+          function sendExitEvents() {
+            const seconds = Math.floor((Date.now() - pageLoad) / 1000);
+            track("scroll", { max_depth: maxScroll });
+            track("time_on_page", { seconds });
+          }
+          document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") sendExitEvents();
+          });
+
+          // Append visitor_id to Stripe links for funnel tracking
+          document.querySelectorAll<HTMLAnchorElement>('a[href*="buy.stripe.com"]').forEach((link) => {
+            const url = new URL(link.href);
+            url.searchParams.set("client_reference_id", vid!);
+            link.href = url.toString();
+          });
+        })();
+      </script>
+    )}
   </body>
 </html>

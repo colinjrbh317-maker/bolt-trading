@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import Stripe from "stripe";
 import { google } from "googleapis";
+import { insertConversion } from "../../lib/db/queries";
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY);
 
@@ -96,11 +97,26 @@ export const POST: APIRoute = async ({ request }) => {
     subscription.id,                          // Stripe Sub ID
   ];
 
+  // Write to Google Sheets (existing behavior)
   try {
     await appendToSheet(row);
   } catch (err) {
     console.error("Failed to append to Google Sheets:", err);
-    return new Response("Logged event but failed to write to sheet", { status: 500 });
+  }
+
+  // Write to Postgres analytics database
+  try {
+    await insertConversion({
+      stripe_event_id: event.id,
+      event_type: getEventLabel(event.type),
+      variant: variant !== "unknown" ? variant : undefined,
+      amount: parseFloat(amount),
+      customer_email: customerEmail,
+      subscription_id: subscription.id,
+      visitor_id: subscription.metadata?.client_reference_id || undefined,
+    });
+  } catch (err) {
+    console.error("Failed to write conversion to Postgres:", err);
   }
 
   return new Response(JSON.stringify({ received: true }), { status: 200 });
