@@ -14,21 +14,19 @@ import { screenshotTestimonials } from "../data/testimonials";
       </p>
     </div>
 
-    <!-- Mobile: horizontal scroll. Desktop: grid -->
-    <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 lg:grid-cols-5 md:overflow-visible md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+    <!-- Grid of testimonial screenshots -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
       {screenshotTestimonials.map((t) => (
-        <div class="snap-center shrink-0 w-60 md:w-auto fade-in">
-          <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 h-full">
-            <img
-              src={t.imagePath}
-              alt={t.alt}
-              class="w-full h-80 md:h-96 object-cover object-top"
-              loading="lazy"
-            />
-            <div class="p-3 text-center">
-              <p class="text-sm font-bold text-gold-400">{t.highlight}</p>
-              <p class="text-xs text-slate-500 mt-1">@{t.username}</p>
-            </div>
+        <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
+          <img
+            src={t.imagePath}
+            alt={t.alt}
+            class="w-full object-contain"
+            loading="lazy"
+          />
+          <div class="p-3 text-center">
+            <p class="text-sm font-bold text-gold-400">{t.highlight}</p>
+            <p class="text-xs text-slate-500 mt-1">@{t.username}</p>
           </div>
         </div>
       ))}
