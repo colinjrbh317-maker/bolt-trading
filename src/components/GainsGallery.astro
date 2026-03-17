@@ -35,7 +35,7 @@ const memberGains = [
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {techsanAlerts.map((g) => (
           <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-            <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="lazy" />
+            <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="eager" decoding="async" />
             <div class="p-3 flex justify-between items-center">
               <span class="text-sm text-slate-300">{g.label}</span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">{g.pct}</span>
@@ -52,14 +52,14 @@ const memberGains = [
       </h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-          <img src="/gains/techsan-january-track.jpg" alt="Techsan January 2026 track record — 80% success rate" class="w-full object-contain bg-navy-900" loading="lazy" />
+          <img src="/gains/techsan-january-track.jpg" alt="Techsan January 2026 track record — 80% success rate" class="w-full object-contain bg-navy-900" loading="eager" decoding="async" />
           <div class="p-3 flex justify-between items-center">
             <span class="text-sm text-slate-300">January 2026</span>
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">80% Win Rate</span>
           </div>
         </div>
         <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-          <img src="/gains/techsan-february-track.jpg" alt="Techsan February 2026 track record — 79% success rate" class="w-full object-contain bg-navy-900" loading="lazy" />
+          <img src="/gains/techsan-february-track.jpg" alt="Techsan February 2026 track record — 79% success rate" class="w-full object-contain bg-navy-900" loading="eager" decoding="async" />
           <div class="p-3 flex justify-between items-center">
             <span class="text-sm text-slate-300">February 2026</span>
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">79% Win Rate</span>
@@ -76,7 +76,7 @@ const memberGains = [
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {memberGains.map((g) => (
           <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-            <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="lazy" />
+            <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="eager" decoding="async" />
             <div class="p-3 flex justify-between items-center">
               <span class="text-sm text-slate-300">{g.label}</span>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">{g.pct}</span>
@@ -92,7 +92,7 @@ const memberGains = [
         <span class="text-bear">We Keep Losses Small</span>
       </h3>
       <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
-        <img src="/gains/IMG_7922.jpg" alt="BIAF stop loss triggered at -$98.50 (-7.89%) while MARA calls profit" class="w-full object-contain bg-navy-900" loading="lazy" />
+        <img src="/gains/IMG_7922.jpg" alt="BIAF stop loss triggered at -$98.50 (-7.89%) while MARA calls profit" class="w-full object-contain bg-navy-900" loading="eager" decoding="async" />
         <div class="p-3 text-center">
           <p class="text-sm text-slate-400">Stop loss triggered at <span class="text-bear font-bold">-7.89%</span> — while wins keep running</p>
         </div>

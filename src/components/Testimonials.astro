@@ -30,7 +30,10 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
               src={t.imagePath}
               alt={t.alt}
               class="w-full object-contain"
-              loading="lazy"
+              loading="eager"
+              decoding="async"
+              width="1179"
+              height="1000"
             />
           </div>
         </div>
