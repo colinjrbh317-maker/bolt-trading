@@ -3,7 +3,7 @@ import { query } from "../../../lib/db/index";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   // Check dashboard token
-  const token = import.meta.env.DASHBOARD_TOKEN;
+  const token = (process.env.DASHBOARD_TOKEN || import.meta.env.DASHBOARD_TOKEN)?.trim();
   const authHeader = request.headers.get("authorization");
   const cookieToken = cookies.get("dashboard-auth")?.value;
 

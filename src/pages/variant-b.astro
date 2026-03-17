@@ -2,7 +2,7 @@
 import Landing from "../components/Landing.astro";
 import { siteConfig } from "../data/config";
 
-const price = 40;
+const price = siteConfig.price;
 const stripeLink = import.meta.env.STRIPE_LINK_B || siteConfig.stripeUrl;
 ---
 

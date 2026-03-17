@@ -10,7 +10,7 @@ import {
 } from "../lib/db/queries";
 
 // Auth check
-const token = import.meta.env.DASHBOARD_TOKEN;
+const token = (process.env.DASHBOARD_TOKEN || import.meta.env.DASHBOARD_TOKEN)?.trim();
 const url = new URL(Astro.request.url);
 const urlToken = url.searchParams.get("token");
 const cookieToken = Astro.cookies.get("dashboard-auth")?.value;

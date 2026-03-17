@@ -78,17 +78,26 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
         (function() {
           const V = document.body.dataset.variant || "a";
 
+          // UUID fallback for older iOS/browsers
+          function genId() {
+            if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+            return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+              const r = Math.random() * 16 | 0;
+              return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+          }
+
           // Persistent visitor ID
           let vid = localStorage.getItem("mm_vid");
           if (!vid) {
-            vid = crypto.randomUUID();
+            vid = genId();
             localStorage.setItem("mm_vid", vid);
           }
 
           // Session ID
           let sid = sessionStorage.getItem("mm_sid");
           if (!sid) {
-            sid = crypto.randomUUID();
+            sid = genId();
             sessionStorage.setItem("mm_sid", sid);
           }
 

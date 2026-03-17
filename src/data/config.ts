@@ -19,7 +19,7 @@ export const siteConfig = {
   memberCount: 400, // "X+ active traders"
 
   // Pricing
-  price: 40,
+  price: 39.99,
   priceInterval: "month",
 
   // Bolt's socials
