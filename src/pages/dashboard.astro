@@ -30,16 +30,28 @@ if (!authenticated) {
 
 // Period
 const period = url.searchParams.get("period") || "7";
-const plausiblePeriod = period === "all" ? "all" : period === "30" ? "30d" : "7d";
 const days = period === "all" ? 0 : parseInt(period) || 7;
 const periodLabel = days === 0 ? "All Time" : `Last ${days} Days`;
+
+// Build Plausible period params — use custom range so today is always included
+const today = new Date();
+const pad = (n: number) => String(n).padStart(2, "0");
+const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayStr = fmtDate(today);
+function plausiblePeriodParams(): Record<string, string> {
+  if (period === "all") return { period: "all" };
+  const from = new Date(today);
+  from.setDate(from.getDate() - days + 1);
+  return { period: "custom", from: fmtDate(from), to: todayStr };
+}
+const periodParams = plausiblePeriodParams();
 
 // Plausible API helper
 const PLAUSIBLE_KEY = (process.env.PLAUSIBLE_API_KEY || import.meta.env.PLAUSIBLE_API_KEY)?.trim();
 const SITE_ID = (process.env.PLAUSIBLE_SITE_ID || import.meta.env.PLAUSIBLE_SITE_ID || "themarketmatchup.com").trim();
 
 async function plausibleFetch(endpoint: string, extra: Record<string, string> = {}) {
-  const q = new URLSearchParams({ site_id: SITE_ID, period: plausiblePeriod, ...extra });
+  const q = new URLSearchParams({ site_id: SITE_ID, ...periodParams, ...extra });
   const res = await fetch(`https://plausible.io/api/v1/stats/${endpoint}?${q}`, {
     headers: { Authorization: `Bearer ${PLAUSIBLE_KEY}` },
   });
