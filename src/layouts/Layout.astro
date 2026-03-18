@@ -64,75 +64,24 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
     <!-- Vercel Analytics -->
     <Analytics />
 
-    <!-- TikTok in-app browser workaround -->
+    <!-- TikTok in-app browser: subtle instruction banner -->
     <script is:inline>
     (function() {
       var ua = navigator.userAgent || '';
       if (!/TikTok|BytedanceWebview|musical_ly/i.test(ua)) return;
 
-      // Create toast element
-      var toast = document.createElement('div');
-      toast.id = 'tiktok-toast';
-      toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:14px 22px;border-radius:12px;font-size:15px;z-index:99999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.5);border:1px solid #d4a74a;max-width:90vw;display:none;line-height:1.4';
-      document.body.appendChild(toast);
-
-      function showToast(msg) {
-        toast.innerHTML = msg;
-        toast.style.display = 'block';
-        clearTimeout(toast._t);
-        toast._t = setTimeout(function() { toast.style.display = 'none'; }, 5000);
-      }
-
-      // Intercept all CTA clicks
-      document.addEventListener('click', function(e) {
-        var link = e.target.closest('[data-track="cta"]');
-        if (!link) return;
-        var url = link.href;
-        if (!url) return;
-        e.preventDefault();
-
-        // Try clipboard API
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(url).then(function() {
-            showToast('Link copied! Paste it in Safari or Chrome to complete your purchase.');
-          }).catch(function() {
-            showToast('Open in your browser:<br><b style="word-break:break-all;color:#d4a74a">' + url + '</b>');
-          });
-        } else {
-          // Fallback: select + copy
-          var inp = document.createElement('textarea');
-          inp.value = url;
-          inp.style.cssText = 'position:fixed;opacity:0';
-          document.body.appendChild(inp);
-          inp.select();
-          try { document.execCommand('copy'); showToast('Link copied! Paste it in Safari or Chrome to complete your purchase.'); }
-          catch(ex) { showToast('Open in your browser:<br><b style="word-break:break-all;color:#d4a74a">' + url + '</b>'); }
-          document.body.removeChild(inp);
-        }
-      }, true);
-
-      // Full-width banner with big tappable button
-      var pageUrl = window.location.href;
       var banner = document.createElement('div');
-      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#0f0f23;color:#fff;padding:12px 16px 14px;z-index:99998;text-align:center;border-bottom:2px solid #d4a74a;box-shadow:0 2px 12px rgba(0,0,0,.6)';
-      banner.innerHTML = '<div style="font-size:12px;margin-bottom:8px;opacity:.8">You\'re viewing this in TikTok</div>' +
-        '<button id="tt-open-btn" style="display:block;width:100%;padding:14px 0;background:linear-gradient(135deg,#d4a74a,#b8860b);color:#000;font-weight:700;font-size:16px;border:none;border-radius:10px;cursor:pointer;letter-spacing:.3px;-webkit-tap-highlight-color:transparent">Open in Browser</button>';
-      document.body.appendChild(banner);
-      document.body.style.paddingTop = '82px';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#0f0f23;color:#fff;padding:10px 40px 10px 16px;z-index:99998;text-align:center;border-bottom:1px solid #d4a74a;font-size:13px;line-height:1.4';
+      banner.innerHTML = 'Tap <b style="color:#d4a74a">&#8942;</b> in the top right corner, then <b style="color:#d4a74a">Open in browser</b> for the best experience';
 
-      document.getElementById('tt-open-btn').addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        // Android: intent URL forces system browser
-        if (/android/i.test(ua)) {
-          window.location.href = 'intent://' + pageUrl.replace(/^https?:\/\//, '') + '#Intent;scheme=https;action=android.intent.action.VIEW;end';
-          return;
-        }
-        // iOS: try x-safari, then window.open, then location
-        window.location.href = 'x-safari-' + pageUrl;
-        setTimeout(function() { window.open(pageUrl, '_system'); }, 300);
-        setTimeout(function() { window.open(pageUrl, '_blank'); }, 600);
-      });
+      var close = document.createElement('span');
+      close.innerHTML = '&times;';
+      close.style.cssText = 'position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:20px;cursor:pointer;opacity:.6;-webkit-tap-highlight-color:transparent';
+      close.onclick = function() { banner.remove(); document.body.style.paddingTop = '0'; };
+      banner.appendChild(close);
+
+      document.body.appendChild(banner);
+      document.body.style.paddingTop = '40px';
     })();
     </script>
 
