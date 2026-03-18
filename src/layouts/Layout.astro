@@ -113,11 +113,7 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
               url: location.href,
               referrer: document.referrer || null,
             });
-            if (navigator.sendBeacon) {
-              navigator.sendBeacon("/api/track", payload);
-            } else {
-              fetch("/api/track", { method: "POST", body: payload, headers: { "Content-Type": "application/json" }, keepalive: true });
-            }
+            fetch("/api/track", { method: "POST", body: payload, headers: { "Content-Type": "application/json" }, keepalive: true }).catch(() => {});
           }
 
           // Track pageview with UTM params
