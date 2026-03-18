@@ -42,7 +42,7 @@ function plausiblePeriodParams(): Record<string, string> {
   if (period === "all") return { period: "all" };
   const from = new Date(today);
   from.setDate(from.getDate() - days + 1);
-  return { period: "custom", from: fmtDate(from), to: todayStr };
+  return { period: "custom", date: `${fmtDate(from)},${todayStr}` };
 }
 const periodParams = plausiblePeriodParams();
 
