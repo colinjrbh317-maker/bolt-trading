@@ -64,6 +64,63 @@ const pageVariant = variant || (Astro.locals as any).variant || "a";
     <!-- Vercel Analytics -->
     <Analytics />
 
+    <!-- TikTok in-app browser workaround -->
+    <script is:inline>
+    (function() {
+      var ua = navigator.userAgent || '';
+      if (!/TikTok|BytedanceWebview|musical_ly/i.test(ua)) return;
+
+      // Create toast element
+      var toast = document.createElement('div');
+      toast.id = 'tiktok-toast';
+      toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:14px 22px;border-radius:12px;font-size:15px;z-index:99999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.5);border:1px solid #d4a74a;max-width:90vw;display:none;line-height:1.4';
+      document.body.appendChild(toast);
+
+      function showToast(msg) {
+        toast.innerHTML = msg;
+        toast.style.display = 'block';
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function() { toast.style.display = 'none'; }, 5000);
+      }
+
+      // Intercept all CTA clicks
+      document.addEventListener('click', function(e) {
+        var link = e.target.closest('[data-track="cta"]');
+        if (!link) return;
+        var url = link.href;
+        if (!url) return;
+        e.preventDefault();
+
+        // Try clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(function() {
+            showToast('Link copied! Paste it in Safari or Chrome to complete your purchase.');
+          }).catch(function() {
+            showToast('Open in your browser:<br><b style="word-break:break-all;color:#d4a74a">' + url + '</b>');
+          });
+        } else {
+          // Fallback: select + copy
+          var inp = document.createElement('textarea');
+          inp.value = url;
+          inp.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(inp);
+          inp.select();
+          try { document.execCommand('copy'); showToast('Link copied! Paste it in Safari or Chrome to complete your purchase.'); }
+          catch(ex) { showToast('Open in your browser:<br><b style="word-break:break-all;color:#d4a74a">' + url + '</b>'); }
+          document.body.removeChild(inp);
+        }
+      }, true);
+
+      // Show a top banner on load
+      var banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#1a1a2e,#0f0f23);color:#fff;padding:10px 16px;font-size:13px;z-index:99998;text-align:center;border-bottom:1px solid #d4a74a;display:flex;align-items:center;justify-content:center;gap:8px';
+      banner.innerHTML = 'For the best experience, <a href="' + window.location.href + '" target="_blank" rel="noopener" style="color:#d4a74a;text-decoration:underline;font-weight:600">open in your browser</a>';
+      document.body.appendChild(banner);
+      // Add top padding so banner doesn't cover content
+      document.body.style.paddingTop = '40px';
+    })();
+    </script>
+
     <!-- Fade-in scroll observer -->
     <script>
       const observer = new IntersectionObserver(
