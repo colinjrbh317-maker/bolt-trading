@@ -1,14 +1,13 @@
 ---
 const techsanAlerts = [
-  { src: "/gains/IMG_7918.jpg", alt: "QQQ $602 Call closed for +$4,590 profit, +30%", label: "QQQ Call", pct: "+$4,590" },
-  { src: "/gains/techsan-slv-933.jpg", alt: "Techsan SLV $100 Call 20 Mar 26 — +933.33%", label: "SLV $100 Call", pct: "+933.33%" },
+  { src: "/gains/orange-usar-3220.jpg", alt: "Orange — USAR $27 Call 1/30, +$3,220 realized profit (+89.95%)", label: "USAR Call (Orange)", pct: "+$3,220" },
+  { src: "/gains/unfrigid-gold-46k.jpg", alt: "unfrigid — $46,686 Gold portfolio, +$5,265 (+12.71%) daily gains", label: "Daily Gains (unfrigid)", pct: "+$5,265" },
+  { src: "/gains/weekly-315pct.jpg", alt: "Member portfolio +315.62% in one week — insane week", label: "Weekly Gains", pct: "+315%" },
 ];
 
 const memberGains = [
   { src: "/gains/miikeeyb-slv-765.jpg", alt: "MiikeeyB SLV $100 Call 3/20 — +$765 realized profit", label: "SLV Call (MiikeeyB)", pct: "+$765" },
-  { src: "/gains/meowmaxin-1363.jpg", alt: "MeowMaxin portfolio +$1,363.42 (32.42%) in one day", label: "Portfolio Day (MeowMaxin)", pct: "+$1,363" },
-  { src: "/gains/gold-portfolio-46k.png", alt: "$46,686 Gold portfolio +$5,265 (12.71%) today", label: "Gold Portfolio", pct: "+12.71%" },
-  { src: "/gains/IMG_7928.jpg", alt: "Portfolio up 315.62% in one week", label: "Weekly Portfolio", pct: "+315%" },
+  { src: "/gains/meowmaxin-1363.jpg", alt: "MeowMaxin portfolio +$1,363.42 (32.42%) in one day", label: "Daily Gains (MeowMaxin)", pct: "+$1,363" },
 ];
 ---
 
@@ -26,13 +25,10 @@ const memberGains = [
 
     <!-- Techsan's Options Alerts -->
     <div class="mb-12">
-      <h3 class="text-lg font-bold text-slate-200 mb-1 fade-in">
-        <span class="text-gold-500">Techsan's Options Alerts</span> — Our dedicated options trader
+      <h3 class="text-lg font-bold text-slate-200 mb-4 fade-in">
+        <span class="text-gold-500">Big Wins From The Server</span>
       </h3>
-      <p class="text-sm text-slate-400 mb-4">
-        Techsan tracks every trade publicly for accountability. January: <span class="text-bull font-semibold">80% success rate</span>. February: <span class="text-bull font-semibold">79% success rate</span>.
-      </p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {techsanAlerts.map((g) => (
           <div class="rounded-xl overflow-hidden border border-navy-700 bg-navy-800 fade-in">
             <img src={g.src} alt={g.alt} class="w-full object-contain bg-navy-900" loading="eager" decoding="async" />
