@@ -4,7 +4,7 @@
 
 export const siteConfig = {
   // Stripe checkout URL
-  stripeUrl: "https://buy.stripe.com/00w8wR0HCbBG4OfeNy3840F",
+  stripeUrl: "https://buy.stripe.com/14A00l0HCaxC80r9te3840u",
 
   // Scarcity — Rolling cohort
   spots: {
