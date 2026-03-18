@@ -1,13 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import {
-  getKPIs,
-  getVariantStats,
-  getPageviewsOverTime,
-  getTopReferrers,
-  getDeviceBreakdown,
-  getRecentEvents,
-} from "../lib/db/queries";
+import { getConversionStats, getRecentConversions } from "../lib/db/queries";
 
 // Auth check
 const token = (process.env.DASHBOARD_TOKEN || import.meta.env.DASHBOARD_TOKEN)?.trim();
@@ -15,14 +8,14 @@ const url = new URL(Astro.request.url);
 const urlToken = url.searchParams.get("token");
 const cookieToken = Astro.cookies.get("dashboard-auth")?.value;
 
-let authenticated = !token; // If no token configured, allow access
+let authenticated = !token;
 
 if (token) {
   if (urlToken === token) {
     authenticated = true;
     Astro.cookies.set("dashboard-auth", token, {
       path: "/",
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24,
       httpOnly: true,
       sameSite: "lax",
     });
@@ -35,56 +28,90 @@ if (!authenticated) {
   return new Response("Unauthorized — add ?token=YOUR_TOKEN to the URL", { status: 401 });
 }
 
-// Get period from query params
+// Period
 const period = url.searchParams.get("period") || "7";
+const plausiblePeriod = period === "all" ? "all" : period === "30" ? "30d" : "7d";
 const days = period === "all" ? 0 : parseInt(period) || 7;
 const periodLabel = days === 0 ? "All Time" : `Last ${days} Days`;
 
-// Fetch all data
-let data: any = { kpis: null, variants: [], pageviewsOverTime: [], referrers: [], devices: [], recentEvents: [] };
-let dbError = false;
+// Plausible API helper
+const PLAUSIBLE_KEY = (process.env.PLAUSIBLE_API_KEY || import.meta.env.PLAUSIBLE_API_KEY)?.trim();
+const SITE_ID = (process.env.PLAUSIBLE_SITE_ID || import.meta.env.PLAUSIBLE_SITE_ID || "themarketmatchup.com").trim();
+
+async function plausibleFetch(endpoint: string, extra: Record<string, string> = {}) {
+  const q = new URLSearchParams({ site_id: SITE_ID, period: plausiblePeriod, ...extra });
+  const res = await fetch(`https://plausible.io/api/v1/stats/${endpoint}?${q}`, {
+    headers: { Authorization: `Bearer ${PLAUSIBLE_KEY}` },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Plausible ${endpoint}: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+// Fetch data
+let pAggregate: any = null;
+let pTimeseries: any[] = [];
+let pDevices: any[] = [];
+let pSources: any[] = [];
+let pCountries: any[] = [];
+let stripeStats: any = null;
+let recentConversions: any[] = [];
+let dataError = "";
 
 try {
-  const [kpis, variants, pageviewsOverTime, referrers, devices, recentEvents] = await Promise.all([
-    getKPIs(days),
-    getVariantStats(days),
-    getPageviewsOverTime(days),
-    getTopReferrers(days),
-    getDeviceBreakdown(days),
-    getRecentEvents(20),
+  const [agg, ts, dev, src, ctr, ss, rc] = await Promise.all([
+    plausibleFetch("aggregate", { metrics: "pageviews,visitors,bounce_rate,visit_duration" }),
+    plausibleFetch("timeseries", { metrics: "pageviews,visitors" }),
+    plausibleFetch("breakdown", { property: "visit:device", metrics: "pageviews,visitors" }),
+    plausibleFetch("breakdown", { property: "visit:source", metrics: "pageviews,visitors", limit: "8" }),
+    plausibleFetch("breakdown", { property: "visit:country", metrics: "pageviews,visitors", limit: "8" }),
+    getConversionStats(days),
+    getRecentConversions(15),
   ]);
-  data = { kpis, variants, pageviewsOverTime, referrers, devices, recentEvents };
-} catch (err) {
-  console.error("Dashboard data error:", err);
-  dbError = true;
+  pAggregate = agg.results;
+  pTimeseries = ts.results || [];
+  pDevices = dev.results || [];
+  pSources = src.results || [];
+  pCountries = ctr.results || [];
+  stripeStats = ss;
+  recentConversions = rc;
+} catch (err: any) {
+  console.error("Dashboard error:", err);
+  dataError = err?.message || "Unknown error";
 }
 
-// Find best performing variant
-const bestVariant = data.variants.length > 0
-  ? data.variants.reduce((best: any, v: any) => v.convRate > best.convRate ? v : best, data.variants[0])
-  : null;
-
-function formatNum(n: number): string {
+// Helpers
+function fNum(n: number): string {
   if (n >= 1000) return (n / 1000).toFixed(1) + "k";
-  return n.toString();
+  return String(Math.round(n));
+}
+function fPct(n: number): string { return n.toFixed(1) + "%"; }
+function fDur(s: number): string {
+  if (s < 60) return Math.round(s) + "s";
+  return Math.floor(s / 60) + "m " + (Math.round(s) % 60) + "s";
+}
+function fMoney(n: number): string {
+  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fDate(d: string | Date): string {
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function formatPct(n: number): string {
-  return n.toFixed(1) + "%";
-}
+const pageviews = pAggregate?.pageviews?.value || 0;
+const visitors = pAggregate?.visitors?.value || 0;
+const bounceRate = pAggregate?.bounce_rate?.value || 0;
+const visitDuration = pAggregate?.visit_duration?.value || 0;
+const conversionRate = visitors > 0 && stripeStats ? (stripeStats.newSubscriptions / visitors * 100) : 0;
 
-function formatTime(seconds: number): string {
-  if (seconds < 60) return seconds + "s";
-  return Math.floor(seconds / 60) + "m " + (seconds % 60) + "s";
-}
-
-function variantLabel(v: string): string {
-  return "Variant " + v.toUpperCase();
-}
+// Timeseries max for bar scaling
+const maxPV = Math.max(...pTimeseries.map((r: any) => r.pageviews || 0), 1);
 ---
 
-<Layout title="Dashboard | Market Matchup Analytics" noTrack={true} variant="a">
+<Layout title="Dashboard | Market Matchup" noTrack={true} variant="a">
   <div class="min-h-screen bg-navy-950 text-slate-100">
+
     <!-- Header -->
     <header class="border-b border-navy-800 bg-navy-900/50 backdrop-blur-sm sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -101,9 +128,7 @@ function variantLabel(v: string): string {
             <a
               href={`/dashboard?period=${p.value}&token=${urlToken || ""}`}
               class={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                (period === p.value || (period === "7" && p.value === "7"))
-                  ? "bg-gold-500 text-navy-950"
-                  : "bg-navy-800 text-slate-400 hover:text-slate-200 hover:bg-navy-700"
+                period === p.value ? "bg-gold-500 text-navy-950" : "bg-navy-800 text-slate-400 hover:text-slate-200 hover:bg-navy-700"
               }`}
             >
               {p.label}
@@ -113,189 +138,114 @@ function variantLabel(v: string): string {
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {dbError ? (
-        <div class="rounded-xl bg-navy-800 border border-navy-700 p-8 text-center">
-          <h2 class="text-xl font-bold text-bear mb-2">Database Not Set Up</h2>
-          <p class="text-slate-400 mb-4">The analytics database tables haven't been created yet.</p>
-          <button
-            id="setup-btn"
-            class="px-6 py-2 bg-gold-500 text-navy-950 font-bold rounded-lg hover:bg-gold-400 transition-colors"
-          >
-            Initialize Database
-          </button>
-          <p id="setup-result" class="text-sm text-slate-500 mt-3"></p>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+      {dataError ? (
+        <div class="rounded-xl bg-navy-800 border border-bear/30 p-8 text-center">
+          <h2 class="text-xl font-bold text-bear mb-2">Error Loading Data</h2>
+          <p class="text-slate-400 text-sm font-mono">{dataError}</p>
         </div>
       ) : (
         <>
-          {/* Period label */}
-          <p class="text-sm text-slate-500">{periodLabel} — <span class="text-slate-400">Last updated: just now</span></p>
+          <p class="text-sm text-slate-500">{periodLabel} · <span class="text-slate-400">Updated just now</span></p>
 
-          {/* Row 1: KPI Cards */}
+          {/* ── Row 1: KPI Cards ── */}
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-sm text-slate-500 mb-1">Page Views</p>
-              <p class="text-3xl font-black">{formatNum(data.kpis?.pageviews || 0)}</p>
+              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Page Views</p>
+              <p class="text-3xl font-black">{fNum(pageviews)}</p>
+              <p class="text-xs text-slate-500 mt-1">Plausible</p>
             </div>
             <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-sm text-slate-500 mb-1">Unique Visitors</p>
-              <p class="text-3xl font-black">{formatNum(data.kpis?.visitors || 0)}</p>
+              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Unique Visitors</p>
+              <p class="text-3xl font-black">{fNum(visitors)}</p>
+              <p class="text-xs text-slate-500 mt-1">Plausible</p>
             </div>
             <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-sm text-slate-500 mb-1">CTA Click Rate</p>
-              <p class="text-3xl font-black text-gold-500">{formatPct(data.kpis?.ctaRate || 0)}</p>
+              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Active Subscribers</p>
+              <p class="text-3xl font-black text-bull">{stripeStats?.netSubscribers ?? "—"}</p>
+              <p class="text-xs text-slate-500 mt-1">All time</p>
             </div>
             <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-sm text-slate-500 mb-1">Conversion Rate</p>
-              <p class="text-3xl font-black text-bull">{formatPct(data.kpis?.conversionRate || 0)}</p>
+              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">MRR</p>
+              <p class="text-3xl font-black text-gold-500">{stripeStats ? fMoney(stripeStats.mrr) : "—"}</p>
+              <p class="text-xs text-slate-500 mt-1">Est. monthly</p>
             </div>
           </div>
 
-          {/* Row 2: A/B/C Variant Comparison */}
-          <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
-            <div class="px-6 py-4 border-b border-navy-700 flex items-center justify-between">
-              <h2 class="text-lg font-bold">A/B/C Variant Performance</h2>
-              {bestVariant && (
-                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-bull/10 text-bull border border-bull/20">
-                  ★ {variantLabel(bestVariant.variant)} winning
-                </span>
-              )}
+          {/* ── Row 2: Engagement Metrics ── */}
+          <div class="grid grid-cols-3 gap-4">
+            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Bounce Rate</p>
+              <p class="text-2xl font-black">{fPct(bounceRate)}</p>
+              <p class="text-xs text-slate-500 mt-1">Left without clicking</p>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-sm">
-                <thead>
-                  <tr class="text-left text-slate-500 border-b border-navy-700">
-                    <th class="px-6 py-3 font-medium">Variant</th>
-                    <th class="px-6 py-3 font-medium text-right">Views</th>
-                    <th class="px-6 py-3 font-medium text-right">Visitors</th>
-                    <th class="px-6 py-3 font-medium text-right">CTA Clicks</th>
-                    <th class="px-6 py-3 font-medium text-right">CTR</th>
-                    <th class="px-6 py-3 font-medium text-right">Conversions</th>
-                    <th class="px-6 py-3 font-medium text-right">Conv Rate</th>
-                    <th class="px-6 py-3 font-medium text-right">Avg Scroll</th>
-                    <th class="px-6 py-3 font-medium text-right">Avg Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.variants.length === 0 ? (
-                    <tr>
-                      <td colspan="9" class="px-6 py-8 text-center text-slate-500">No data yet — events will appear here once visitors arrive</td>
-                    </tr>
-                  ) : (
-                    data.variants.map((v: any) => (
-                      <tr class={`border-b border-navy-700/50 ${bestVariant?.variant === v.variant ? "bg-bull/5" : ""}`}>
-                        <td class="px-6 py-3 font-bold">
-                          {variantLabel(v.variant)}
-                          {bestVariant?.variant === v.variant && <span class="ml-2 text-bull text-xs">★</span>}
-                        </td>
-                        <td class="px-6 py-3 text-right">{formatNum(v.pageviews)}</td>
-                        <td class="px-6 py-3 text-right">{formatNum(v.uniqueVisitors)}</td>
-                        <td class="px-6 py-3 text-right">{formatNum(v.ctaClicks)}</td>
-                        <td class="px-6 py-3 text-right text-gold-400">{formatPct(v.ctr)}</td>
-                        <td class="px-6 py-3 text-right text-bull font-bold">{v.conversions}</td>
-                        <td class="px-6 py-3 text-right text-bull">{formatPct(v.convRate)}</td>
-                        <td class="px-6 py-3 text-right">{v.avgScroll}%</td>
-                        <td class="px-6 py-3 text-right">{formatTime(v.avgTime)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Avg Visit Duration</p>
+              <p class="text-2xl font-black">{fDur(visitDuration)}</p>
+              <p class="text-xs text-slate-500 mt-1">Time on page</p>
             </div>
-
-            {/* Variant bar chart */}
-            {data.variants.length > 0 && (
-              <div class="px-6 py-4 border-t border-navy-700">
-                <p class="text-xs text-slate-500 mb-3">Conversion Rate Comparison</p>
-                <div class="space-y-2">
-                  {data.variants.map((v: any) => {
-                    const maxRate = Math.max(...data.variants.map((x: any) => x.convRate), 1);
-                    const width = (v.convRate / maxRate) * 100;
-                    return (
-                      <div class="flex items-center gap-3">
-                        <span class="text-xs font-bold w-24">{variantLabel(v.variant)}</span>
-                        <div class="flex-1 h-6 bg-navy-900 rounded overflow-hidden">
-                          <div
-                            class={`h-full rounded ${bestVariant?.variant === v.variant ? "bg-bull" : "bg-gold-500/60"}`}
-                            style={`width: ${Math.max(width, 2)}%`}
-                          ></div>
-                        </div>
-                        <span class="text-xs font-bold w-14 text-right">{formatPct(v.convRate)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Conversion Rate</p>
+              <p class="text-2xl font-black text-bull">{fPct(conversionRate)}</p>
+              <p class="text-xs text-slate-500 mt-1">New subs / visitors</p>
+            </div>
           </div>
 
-          {/* Row 3: Funnel */}
-          {data.kpis && (
+          {/* ── Row 3: Pageviews Sparkline ── */}
+          {pTimeseries.length > 0 && (
             <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
-              <h2 class="text-lg font-bold mb-4">Conversion Funnel</h2>
-              <div class="flex items-center gap-4">
-                {[
-                  { label: "Page Views", value: data.kpis.pageviews, color: "bg-slate-500" },
-                  { label: "CTA Clicks", value: data.kpis.ctaClicks, color: "bg-gold-500" },
-                  { label: "Conversions", value: data.kpis.conversions, color: "bg-bull" },
-                ].map((step, i) => {
-                  const maxVal = Math.max(data.kpis.pageviews, 1);
-                  const width = Math.max((step.value / maxVal) * 100, 5);
+              <h2 class="text-lg font-bold mb-4">Pageviews Over Time</h2>
+              <div class="flex items-end gap-1 h-24">
+                {pTimeseries.map((r: any) => {
+                  const h = Math.max((r.pageviews / maxPV) * 100, 2);
                   return (
-                    <>
-                      <div class="flex-1">
-                        <div class="flex items-baseline justify-between mb-1">
-                          <span class="text-sm text-slate-400">{step.label}</span>
-                          <span class="text-lg font-bold">{formatNum(step.value)}</span>
-                        </div>
-                        <div class="h-8 bg-navy-900 rounded overflow-hidden">
-                          <div class={`h-full rounded ${step.color}`} style={`width: ${width}%`}></div>
-                        </div>
-                        {i < 2 && step.value > 0 && (
-                          <p class="text-xs text-slate-500 mt-1">
-                            {i === 0
-                              ? formatPct(data.kpis.ctaRate) + " click through"
-                              : formatPct(data.kpis.pageviews > 0 ? (data.kpis.conversions / data.kpis.pageviews * 100) : 0) + " convert"
-                            }
-                          </p>
-                        )}
-                      </div>
-                      {i < 2 && (
-                        <svg class="w-5 h-5 text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      )}
-                    </>
+                    <div class="flex-1 flex flex-col items-center gap-1 group relative">
+                      <div
+                        class="w-full bg-gold-500/60 rounded-t hover:bg-gold-500 transition-colors"
+                        style={`height: ${h}%`}
+                        title={`${r.date}: ${r.pageviews} views, ${r.visitors} visitors`}
+                      ></div>
+                    </div>
                   );
                 })}
+              </div>
+              <div class="flex justify-between text-xs text-slate-600 mt-1">
+                <span>{pTimeseries[0]?.date}</span>
+                <span>{pTimeseries[Math.floor(pTimeseries.length / 2)]?.date}</span>
+                <span>{pTimeseries[pTimeseries.length - 1]?.date}</span>
               </div>
             </div>
           )}
 
-          {/* Row 4: Traffic Sources + Devices */}
+          {/* ── Row 4: Sources + Devices ── */}
           <div class="grid lg:grid-cols-2 gap-4">
-            {/* Top Referrers */}
+
+            {/* Traffic Sources */}
             <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
               <div class="px-6 py-4 border-b border-navy-700">
-                <h2 class="text-lg font-bold">Top Referrers</h2>
+                <h2 class="text-lg font-bold">Traffic Sources</h2>
               </div>
               <div class="divide-y divide-navy-700/50">
-                {data.referrers.length === 0 ? (
-                  <p class="px-6 py-8 text-center text-slate-500">No referrer data yet</p>
+                {pSources.length === 0 ? (
+                  <p class="px-6 py-8 text-center text-slate-500">No source data yet</p>
                 ) : (
-                  data.referrers.slice(0, 8).map((r: any, i: number) => {
-                    const maxCount = data.referrers[0]?.count || 1;
-                    const width = (Number(r.count) / Number(maxCount)) * 100;
+                  pSources.map((s: any, i: number) => {
+                    const max = pSources[0]?.visitors || 1;
+                    const w = (s.visitors / max) * 100;
                     return (
                       <div class="px-6 py-3 flex items-center gap-3">
-                        <span class="text-xs text-slate-500 w-5">{i + 1}</span>
+                        <span class="text-xs text-slate-500 w-4">{i + 1}</span>
                         <div class="flex-1 min-w-0">
-                          <p class="text-sm font-medium truncate">{r.referrer || "Direct"}</p>
+                          <p class="text-sm font-medium truncate">{s.source || "Direct / None"}</p>
                           <div class="h-1.5 bg-navy-900 rounded mt-1">
-                            <div class="h-full bg-gold-500/40 rounded" style={`width: ${width}%`}></div>
+                            <div class="h-full bg-gold-500/50 rounded" style={`width: ${w}%`}></div>
                           </div>
                         </div>
-                        <span class="text-sm font-bold text-slate-400">{formatNum(Number(r.count))}</span>
+                        <div class="text-right">
+                          <p class="text-sm font-bold">{fNum(s.visitors)}</p>
+                          <p class="text-xs text-slate-500">{fNum(s.pageviews)} views</p>
+                        </div>
                       </div>
                     );
                   })
@@ -306,29 +256,23 @@ function variantLabel(v: string): string {
             {/* Device Breakdown */}
             <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
               <h2 class="text-lg font-bold mb-4">Device Breakdown</h2>
-              {data.devices.length === 0 ? (
+              {pDevices.length === 0 ? (
                 <p class="text-center text-slate-500 py-8">No device data yet</p>
               ) : (
                 <div class="space-y-4">
-                  {data.devices.map((d: any) => {
-                    const totalDevices = data.devices.reduce((sum: number, x: any) => sum + Number(x.count), 0);
-                    const pct = totalDevices > 0 ? (Number(d.count) / totalDevices) * 100 : 0;
-                    const icon = d.device_type === "mobile" ? "📱" : d.device_type === "tablet" ? "📟" : "🖥️";
+                  {pDevices.map((d: any) => {
+                    const total = pDevices.reduce((s: number, x: any) => s + x.visitors, 0);
+                    const pct = total > 0 ? (d.visitors / total) * 100 : 0;
+                    const icon = d.device === "Mobile" ? "📱" : d.device === "Tablet" ? "📟" : "🖥️";
+                    const color = d.device === "Mobile" ? "bg-gold-500" : d.device === "Desktop" ? "bg-bull" : "bg-slate-500";
                     return (
                       <div>
                         <div class="flex items-center justify-between mb-1">
-                          <span class="text-sm font-medium">
-                            {icon} {d.device_type.charAt(0).toUpperCase() + d.device_type.slice(1)}
-                          </span>
-                          <span class="text-sm text-slate-400">{formatNum(Number(d.count))} ({formatPct(pct)})</span>
+                          <span class="text-sm font-medium">{icon} {d.device || "Unknown"}</span>
+                          <span class="text-sm text-slate-400">{fNum(d.visitors)} ({fPct(pct)})</span>
                         </div>
                         <div class="h-3 bg-navy-900 rounded overflow-hidden">
-                          <div
-                            class={`h-full rounded ${
-                              d.device_type === "mobile" ? "bg-gold-500" : d.device_type === "desktop" ? "bg-bull" : "bg-slate-500"
-                            }`}
-                            style={`width: ${Math.max(pct, 2)}%`}
-                          ></div>
+                          <div class={`h-full rounded ${color}`} style={`width: ${Math.max(pct, 2)}%`}></div>
                         </div>
                       </div>
                     );
@@ -338,64 +282,89 @@ function variantLabel(v: string): string {
             </div>
           </div>
 
-          {/* Row 5: CTA Breakdown by Button */}
-          <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
-            <h2 class="text-lg font-bold mb-4">CTA Click Breakdown</h2>
-            <p class="text-sm text-slate-500 mb-4">Which buttons are driving clicks</p>
-            <div id="cta-breakdown" class="text-sm text-slate-400">Loading CTA data...</div>
-          </div>
+          {/* ── Row 5: Countries ── */}
+          {pCountries.length > 0 && (
+            <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
+              <div class="px-6 py-4 border-b border-navy-700">
+                <h2 class="text-lg font-bold">Top Countries</h2>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-navy-700">
+                {pCountries.slice(0, 8).map((c: any) => (
+                  <div class="px-6 py-4">
+                    <p class="text-sm font-medium">{c.country}</p>
+                    <p class="text-xl font-bold mt-1">{fNum(c.visitors)}</p>
+                    <p class="text-xs text-slate-500">{fNum(c.pageviews)} views</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-          {/* Row 6: Live Event Feed */}
+          {/* ── Row 6: Stripe Summary ── */}
+          {stripeStats && (
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">New Subs ({periodLabel})</p>
+                <p class="text-3xl font-black text-bull">+{stripeStats.newSubscriptions}</p>
+              </div>
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Cancellations ({periodLabel})</p>
+                <p class="text-3xl font-black text-bear">-{stripeStats.cancellations}</p>
+              </div>
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Period Revenue</p>
+                <p class="text-3xl font-black text-gold-500">{fMoney(stripeStats.periodRevenue)}</p>
+              </div>
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Net Change</p>
+                <p class={`text-3xl font-black ${stripeStats.newSubscriptions - stripeStats.cancellations >= 0 ? "text-bull" : "text-bear"}`}>
+                  {stripeStats.newSubscriptions - stripeStats.cancellations >= 0 ? "+" : ""}{stripeStats.newSubscriptions - stripeStats.cancellations}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Row 7: Recent Stripe Events ── */}
           <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
             <div class="px-6 py-4 border-b border-navy-700 flex items-center justify-between">
-              <h2 class="text-lg font-bold">Recent Events</h2>
+              <h2 class="text-lg font-bold">Recent Stripe Events</h2>
               <span class="inline-flex items-center gap-1 text-xs text-bull">
                 <span class="w-1.5 h-1.5 bg-bull rounded-full animate-pulse"></span>
                 Live
               </span>
             </div>
-            <div class="overflow-x-auto max-h-80 overflow-y-auto" id="live-feed">
-              <table class="w-full text-xs">
-                <thead class="sticky top-0 bg-navy-800">
-                  <tr class="text-left text-slate-500 border-b border-navy-700">
-                    <th class="px-4 py-2 font-medium">Time</th>
-                    <th class="px-4 py-2 font-medium">Type</th>
-                    <th class="px-4 py-2 font-medium">Variant</th>
-                    <th class="px-4 py-2 font-medium">Device</th>
-                    <th class="px-4 py-2 font-medium">Country</th>
-                    <th class="px-4 py-2 font-medium">Data</th>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-left text-slate-500 border-b border-navy-700 text-xs">
+                    <th class="px-6 py-3 font-medium">Time</th>
+                    <th class="px-6 py-3 font-medium">Type</th>
+                    <th class="px-6 py-3 font-medium">Email</th>
+                    <th class="px-6 py-3 font-medium text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.recentEvents.length === 0 ? (
+                  {recentConversions.length === 0 ? (
                     <tr>
-                      <td colspan="6" class="px-4 py-8 text-center text-slate-500">No events yet — they'll appear here in real-time</td>
+                      <td colspan="4" class="px-6 py-8 text-center text-slate-500">No Stripe events yet</td>
                     </tr>
                   ) : (
-                    data.recentEvents.map((e: any) => {
-                      const time = new Date(e.created_at).toLocaleString("en-US", {
-                        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                      });
-                      const typeColor = e.event_type === "pageview" ? "text-slate-300" :
-                        e.event_type === "cta_click" ? "text-gold-400" :
-                        e.event_type === "scroll" ? "text-slate-500" : "text-slate-400";
-                      const eventData = typeof e.event_data === "string" ? JSON.parse(e.event_data) : e.event_data;
-                      const dataStr = Object.entries(eventData || {})
-                        .filter(([_, v]) => v)
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join(", ");
-
-                      return (
-                        <tr class="border-b border-navy-700/30 hover:bg-navy-700/20">
-                          <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{time}</td>
-                          <td class={`px-4 py-2 font-medium ${typeColor}`}>{e.event_type}</td>
-                          <td class="px-4 py-2 font-bold">{e.variant?.toUpperCase()}</td>
-                          <td class="px-4 py-2">{e.device_type || "—"}</td>
-                          <td class="px-4 py-2">{e.country || "—"}</td>
-                          <td class="px-4 py-2 text-slate-500 max-w-xs truncate">{dataStr || "—"}</td>
-                        </tr>
-                      );
-                    })
+                    recentConversions.map((c: any) => (
+                      <tr class="border-b border-navy-700/30 hover:bg-navy-700/20">
+                        <td class="px-6 py-3 text-slate-500 whitespace-nowrap text-xs">{fDate(c.created_at)}</td>
+                        <td class="px-6 py-3">
+                          <span class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+                            c.event_type === "new_subscription" ? "bg-bull/10 text-bull" : "bg-bear/10 text-bear"
+                          }`}>
+                            {c.event_type === "new_subscription" ? "✓ New Sub" : "✗ Cancelled"}
+                          </span>
+                        </td>
+                        <td class="px-6 py-3 text-slate-300">{c.customer_email || "—"}</td>
+                        <td class="px-6 py-3 text-right font-bold text-gold-400">
+                          {c.amount ? fMoney(c.amount) + "/mo" : "—"}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -406,37 +375,8 @@ function variantLabel(v: string): string {
     </main>
   </div>
 
-  {/* Setup script */}
-  <script>
-    const setupBtn = document.getElementById("setup-btn");
-    if (setupBtn) {
-      setupBtn.addEventListener("click", async () => {
-        const resultEl = document.getElementById("setup-result");
-        setupBtn.textContent = "Setting up...";
-        try {
-          const res = await fetch("/api/dashboard/setup", {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${new URLSearchParams(location.search).get("token") || ""}` },
-          });
-          const data = await res.json();
-          if (res.ok) {
-            if (resultEl) resultEl.textContent = "Database created! Refreshing...";
-            setTimeout(() => location.reload(), 1500);
-          } else {
-            if (resultEl) resultEl.textContent = "Error: " + (data.error || "Unknown error");
-          }
-        } catch (err) {
-          if (resultEl) resultEl.textContent = "Failed to connect. Check console.";
-          console.error(err);
-        }
-      });
-    }
-
-    // Auto-refresh every 30 seconds
-    if (!document.getElementById("setup-btn")) {
-      setInterval(() => {
-        location.reload();
-      }, 30000);
-    }
+  <script is:inline>
+    // Auto-refresh every 60 seconds
+    setTimeout(() => location.reload(), 60000);
   </script>
 </Layout>

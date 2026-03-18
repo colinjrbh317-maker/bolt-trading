@@ -181,6 +181,38 @@ export async function getRecentEvents(limit = 20) {
   `, [limit]);
 }
 
+export async function getConversionStats(days: number) {
+  const interval = days > 0 ? `AND created_at >= NOW() - INTERVAL '${days} days'` : "";
+  const [newSubs] = await query(
+    `SELECT COUNT(*) as total, COALESCE(SUM(amount), 0) as revenue FROM conversions WHERE event_type = 'new_subscription' ${interval}`
+  );
+  const [cancels] = await query(
+    `SELECT COUNT(*) as total FROM conversions WHERE event_type = 'cancellation' ${interval}`
+  );
+  const [allNewSubs] = await query(
+    `SELECT COUNT(*) as total FROM conversions WHERE event_type = 'new_subscription'`
+  );
+  const [allCancels] = await query(
+    `SELECT COUNT(*) as total FROM conversions WHERE event_type = 'cancellation'`
+  );
+  const netSubscribers = Number(allNewSubs.total) - Number(allCancels.total);
+  return {
+    newSubscriptions: Number(newSubs.total),
+    cancellations: Number(cancels.total),
+    netSubscribers: Math.max(netSubscribers, 0),
+    mrr: Math.max(netSubscribers, 0) * 39.99,
+    periodRevenue: Number(newSubs.revenue),
+  };
+}
+
+export async function getRecentConversions(limit = 15) {
+  return query(
+    `SELECT id, event_type, customer_email, amount, subscription_id, created_at
+     FROM conversions ORDER BY created_at DESC LIMIT $1`,
+    [limit]
+  );
+}
+
 export async function aggregateDailyStats(dateStr: string) {
   return query(`
     INSERT INTO daily_stats (date, variant, pageviews, unique_visitors, cta_clicks, avg_scroll_depth, avg_time_on_page, conversions)
