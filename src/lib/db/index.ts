@@ -2,8 +2,11 @@ import { neon } from "@neondatabase/serverless";
 
 function getDb() {
   const url =
+    process.env.BOLTTRADES_DATABASE_URL ||
+    process.env.BOLTTRADES_POSTGRES_URL ||
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
+    import.meta.env.BOLTTRADES_DATABASE_URL ||
     import.meta.env.DATABASE_URL ||
     import.meta.env.POSTGRES_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
