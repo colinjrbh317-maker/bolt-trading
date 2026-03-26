@@ -1,0 +1,207 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { getAllConversions } from "../lib/db/queries";
+
+// Auth check (same as dashboard)
+const token = (process.env.DASHBOARD_TOKEN || import.meta.env.DASHBOARD_TOKEN)?.trim();
+const url = new URL(Astro.request.url);
+const urlToken = url.searchParams.get("token");
+const cookieToken = Astro.cookies.get("dashboard-auth")?.value;
+
+let authenticated = !token;
+if (token) {
+  if (urlToken === token) {
+    authenticated = true;
+    Astro.cookies.set("dashboard-auth", token, {
+      path: "/",
+      maxAge: 60 * 60 * 24,
+      httpOnly: true,
+      sameSite: "lax",
+    });
+  } else if (cookieToken === token) {
+    authenticated = true;
+  }
+}
+if (!authenticated) {
+  return new Response("Unauthorized", { status: 401 });
+}
+
+// Query params
+const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+const typeFilter = url.searchParams.get("type") || "all";
+const emailSearch = url.searchParams.get("q") || "";
+
+// Fetch data
+let result = { conversions: [] as any[], total: 0, page: 1, totalPages: 0 };
+let dataError = "";
+
+try {
+  result = await getAllConversions(page, 50, typeFilter !== "all" ? typeFilter : undefined, emailSearch || undefined);
+} catch (err: any) {
+  console.error("Events page error:", err);
+  dataError = err?.message || "Unknown error";
+}
+
+// Helpers
+function fMoney(n: number): string {
+  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fDate(d: string | Date): string {
+  return new Date(d).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function buildUrl(params: Record<string, string | number>) {
+  const base = `/events?token=${urlToken || ""}`;
+  const qs = Object.entries(params).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join("");
+  return base + qs;
+}
+---
+
+<Layout title="Stripe Events | Market Matchup" noTrack={true} variant="a">
+  <div class="min-h-screen bg-navy-950 text-slate-100">
+
+    <!-- Header -->
+    <header class="border-b border-navy-800 bg-navy-900/50 backdrop-blur-sm sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <a href={`/dashboard?token=${urlToken || ""}`} class="text-slate-400 hover:text-slate-200 transition-colors">
+            ← Dashboard
+          </a>
+          <h1 class="text-xl font-bold">All Stripe <span class="text-gold-500">Events</span></h1>
+        </div>
+        <p class="text-sm text-slate-500">{result.total} total events</p>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+      {dataError ? (
+        <div class="rounded-xl bg-navy-800 border border-bear/30 p-8 text-center">
+          <h2 class="text-xl font-bold text-bear mb-2">Error Loading Data</h2>
+          <p class="text-slate-400 text-sm font-mono">{dataError}</p>
+        </div>
+      ) : (
+        <>
+          {/* ── Filters ── */}
+          <div class="flex flex-wrap gap-3 items-center">
+            {/* Type Filter */}
+            <div class="flex gap-1 bg-navy-900 rounded-lg p-1">
+              {[
+                { value: "all", label: "All" },
+                { value: "new_subscription", label: "New Subs" },
+                { value: "cancellation", label: "Cancellations" },
+              ].map((f) => (
+                <a
+                  href={buildUrl({ type: f.value, page: 1, q: emailSearch })}
+                  class={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    typeFilter === f.value ? "bg-gold-500/15 text-gold-500" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  {f.label}
+                </a>
+              ))}
+            </div>
+
+            {/* Email Search */}
+            <form method="get" action="/events" class="flex gap-2">
+              <input type="hidden" name="token" value={urlToken || ""} />
+              <input type="hidden" name="type" value={typeFilter} />
+              <input
+                type="text"
+                name="q"
+                value={emailSearch}
+                placeholder="Search by email..."
+                class="px-3 py-1.5 text-sm rounded-lg bg-navy-800 border border-navy-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-gold-500/50 w-64"
+              />
+              <button type="submit" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-navy-800 border border-navy-700 text-slate-400 hover:text-slate-200 hover:bg-navy-700 transition-colors">
+                Search
+              </button>
+            </form>
+
+            {emailSearch && (
+              <a href={buildUrl({ type: typeFilter, page: 1, q: "" })} class="text-xs text-slate-500 hover:text-slate-300">
+                Clear search
+              </a>
+            )}
+          </div>
+
+          {/* ── Events Table ── */}
+          <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-left text-slate-500 border-b border-navy-700 text-xs">
+                    <th class="px-6 py-3 font-medium">Time (ET)</th>
+                    <th class="px-6 py-3 font-medium">Type</th>
+                    <th class="px-6 py-3 font-medium">Email</th>
+                    <th class="px-6 py-3 font-medium">Variant</th>
+                    <th class="px-6 py-3 font-medium">Subscription ID</th>
+                    <th class="px-6 py-3 font-medium text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.conversions.length === 0 ? (
+                    <tr>
+                      <td colspan="6" class="px-6 py-12 text-center text-slate-500">
+                        {emailSearch ? `No events matching "${emailSearch}"` : "No events found"}
+                      </td>
+                    </tr>
+                  ) : (
+                    result.conversions.map((c: any) => (
+                      <tr class="border-b border-navy-700/30 hover:bg-navy-700/20 transition-colors">
+                        <td class="px-6 py-3 text-slate-500 whitespace-nowrap text-xs">{fDate(c.created_at)}</td>
+                        <td class="px-6 py-3">
+                          <span class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+                            c.event_type === "new_subscription" ? "bg-bull/10 text-bull" : "bg-bear/10 text-bear"
+                          }`}>
+                            {c.event_type === "new_subscription" ? "✓ New Sub" : "✗ Cancelled"}
+                          </span>
+                        </td>
+                        <td class="px-6 py-3 text-slate-300">{c.customer_email || "—"}</td>
+                        <td class="px-6 py-3 text-slate-400 uppercase">{c.variant || "—"}</td>
+                        <td class="px-6 py-3 text-slate-500 text-xs font-mono">{c.subscription_id ? c.subscription_id.slice(0, 20) + "..." : "—"}</td>
+                        <td class="px-6 py-3 text-right font-bold text-gold-400">
+                          {c.amount ? fMoney(c.amount) + "/mo" : "—"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ── Pagination ── */}
+          {result.totalPages > 1 && (
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-slate-500">
+                Page {result.page} of {result.totalPages}
+              </p>
+              <div class="flex gap-2">
+                {result.page > 1 && (
+                  <a
+                    href={buildUrl({ type: typeFilter, page: result.page - 1, q: emailSearch })}
+                    class="px-4 py-2 text-sm font-medium rounded-lg bg-navy-800 border border-navy-700 text-slate-400 hover:text-slate-200 hover:bg-navy-700 transition-colors"
+                  >
+                    ← Previous
+                  </a>
+                )}
+                {result.page < result.totalPages && (
+                  <a
+                    href={buildUrl({ type: typeFilter, page: result.page + 1, q: emailSearch })}
+                    class="px-4 py-2 text-sm font-medium rounded-lg bg-navy-800 border border-navy-700 text-slate-400 hover:text-slate-200 hover:bg-navy-700 transition-colors"
+                  >
+                    Next →
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </main>
+  </div>
+</Layout>

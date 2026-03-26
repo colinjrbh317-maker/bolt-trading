@@ -1,4 +1,65 @@
 import { query } from "./index";
+import Stripe from "stripe";
+
+// --- Stripe Live Queries ---
+
+const stripe = new Stripe(
+  (process.env.STRIPE_SECRET_KEY || (import.meta as any).env?.STRIPE_SECRET_KEY) as string,
+  { apiVersion: "2025-04-30.basil" as any }
+);
+
+export async function getStripeSubscriberStats() {
+  let activeCount = 0;
+  let mrrCents = 0;
+  let hasMore = true;
+  let startingAfter: string | undefined;
+
+  while (hasMore) {
+    const params: Stripe.SubscriptionListParams = {
+      status: "active",
+      limit: 100,
+      expand: ["data.items.data.price"],
+    };
+    if (startingAfter) params.starting_after = startingAfter;
+
+    const subs = await stripe.subscriptions.list(params);
+    for (const sub of subs.data) {
+      activeCount++;
+      for (const item of sub.items.data) {
+        const amount = item.price?.unit_amount || 0;
+        const quantity = item.quantity || 1;
+        // Normalize to monthly: if yearly, divide by 12
+        const interval = item.price?.recurring?.interval;
+        if (interval === "year") {
+          mrrCents += (amount * quantity) / 12;
+        } else {
+          mrrCents += amount * quantity;
+        }
+      }
+    }
+    hasMore = subs.has_more;
+    if (subs.data.length > 0) {
+      startingAfter = subs.data[subs.data.length - 1].id;
+    }
+  }
+
+  return {
+    activeSubscribers: activeCount,
+    mrr: mrrCents / 100,
+  };
+}
+
+export async function getStripeEvents(limit = 50, startingAfter?: string, typeFilter?: string) {
+  const params: Stripe.EventListParams = { limit };
+  if (startingAfter) params.starting_after = startingAfter;
+  if (typeFilter) params.type = typeFilter as any;
+
+  const events = await stripe.events.list(params);
+  return {
+    events: events.data,
+    hasMore: events.has_more,
+  };
+}
 
 // --- Event Tracking ---
 
@@ -236,4 +297,76 @@ export async function aggregateDailyStats(dateStr: string) {
       avg_time_on_page = EXCLUDED.avg_time_on_page,
       conversions = EXCLUDED.conversions
   `, [dateStr]);
+}
+
+// --- Paginated Conversions for Events Page ---
+
+export async function getAllConversions(
+  page = 1,
+  limit = 50,
+  typeFilter?: string,
+  emailSearch?: string
+) {
+  const offset = (page - 1) * limit;
+  let whereClause = "WHERE 1=1";
+  const params: any[] = [];
+  let paramIdx = 1;
+
+  if (typeFilter && typeFilter !== "all") {
+    whereClause += ` AND event_type = $${paramIdx}`;
+    params.push(typeFilter);
+    paramIdx++;
+  }
+
+  if (emailSearch) {
+    whereClause += ` AND customer_email ILIKE $${paramIdx}`;
+    params.push(`%${emailSearch}%`);
+    paramIdx++;
+  }
+
+  const [countResult] = await query(
+    `SELECT COUNT(*) as total FROM conversions ${whereClause}`,
+    params
+  );
+
+  const rows = await query(
+    `SELECT id, stripe_event_id, event_type, variant, amount, customer_email, subscription_id, created_at
+     FROM conversions ${whereClause}
+     ORDER BY created_at DESC
+     LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+    [...params, limit, offset]
+  );
+
+  return {
+    conversions: rows,
+    total: Number(countResult.total),
+    page,
+    totalPages: Math.ceil(Number(countResult.total) / limit),
+  };
+}
+
+// --- MRR History (monthly from conversions table) ---
+
+export async function getMRRHistory(months = 12) {
+  const rows = await query(`
+    WITH monthly AS (
+      SELECT
+        DATE_TRUNC('month', created_at) as month,
+        SUM(CASE WHEN event_type = 'new_subscription' THEN 1 ELSE 0 END) as new_subs,
+        SUM(CASE WHEN event_type = 'cancellation' THEN 1 ELSE 0 END) as cancels,
+        SUM(CASE WHEN event_type = 'new_subscription' THEN COALESCE(amount, 0) ELSE 0 END) as revenue
+      FROM conversions
+      WHERE created_at >= NOW() - INTERVAL '${months} months'
+      GROUP BY DATE_TRUNC('month', created_at)
+      ORDER BY month
+    )
+    SELECT
+      TO_CHAR(month, 'YYYY-MM') as month,
+      new_subs::int,
+      cancels::int,
+      revenue::numeric,
+      SUM(new_subs - cancels) OVER (ORDER BY month) as cumulative_net
+    FROM monthly
+  `);
+  return rows;
 }

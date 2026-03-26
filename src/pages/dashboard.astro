@@ -1,6 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { getConversionStats, getRecentConversions } from "../lib/db/queries";
+import { getConversionStats, getRecentConversions, getStripeSubscriberStats, getMRRHistory } from "../lib/db/queries";
 
 // Auth check
 const token = (process.env.DASHBOARD_TOKEN || import.meta.env.DASHBOARD_TOKEN)?.trim();
@@ -70,10 +70,13 @@ let pSources: any[] = [];
 let pCountries: any[] = [];
 let stripeStats: any = null;
 let recentConversions: any[] = [];
+let liveStripe: { activeSubscribers: number; mrr: number } = { activeSubscribers: 0, mrr: 0 };
+let mrrHistory: any[] = [];
+let realtimeVisitors = 0;
 let dataError = "";
 
 try {
-  const [agg, ts, dev, src, ctr, ss, rc] = await Promise.all([
+  const [agg, ts, dev, src, ctr, ss, rc, ls, mh, rv] = await Promise.all([
     plausibleFetch("aggregate", { metrics: "pageviews,visitors,bounce_rate,visit_duration" }),
     plausibleFetch("timeseries", { metrics: "pageviews,visitors" }),
     plausibleFetch("breakdown", { property: "visit:device", metrics: "pageviews,visitors" }),
@@ -81,6 +84,11 @@ try {
     plausibleFetch("breakdown", { property: "visit:country", metrics: "pageviews,visitors", limit: "8" }),
     getConversionStats(days),
     getRecentConversions(15),
+    getStripeSubscriberStats(),
+    getMRRHistory(12),
+    fetch(`https://plausible.io/api/v1/stats/realtime/visitors?site_id=${SITE_ID}`, {
+      headers: { Authorization: `Bearer ${PLAUSIBLE_KEY}` },
+    }).then(r => r.ok ? r.json() : 0).catch(() => 0),
   ]);
   pAggregate = agg.results;
   pTimeseries = ts.results || [];
@@ -89,6 +97,9 @@ try {
   pCountries = ctr.results || [];
   stripeStats = ss;
   recentConversions = rc;
+  liveStripe = ls;
+  mrrHistory = mh;
+  realtimeVisitors = typeof rv === "number" ? rv : 0;
 } catch (err: any) {
   console.error("Dashboard error:", err);
   dataError = err?.message || "Unknown error";
@@ -108,7 +119,10 @@ function fMoney(n: number): string {
   return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fDate(d: string | Date): string {
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(d).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
 }
 
 const pageviews = pAggregate?.pageviews?.value || 0;
@@ -130,8 +144,20 @@ const maxPV = Math.max(...pTimeseries.map((r: any) => r.pageviews || 0), 1);
         <div class="flex items-center gap-3">
           <img src="/bolt-logo.png" alt="Bolt" class="w-8 h-8 rounded-full" />
           <h1 class="text-xl font-bold">Market Matchup <span class="text-gold-500">Analytics</span></h1>
+          {realtimeVisitors > 0 && (
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-bull/10 text-bull text-xs font-bold">
+              <span class="w-1.5 h-1.5 bg-bull rounded-full animate-pulse"></span>
+              {realtimeVisitors} online now
+            </span>
+          )}
         </div>
         <div class="flex items-center gap-2">
+          <a
+            href={`/events?token=${urlToken || ""}`}
+            class="px-3 py-1.5 text-sm font-medium rounded-lg bg-navy-800 text-slate-400 hover:text-slate-200 hover:bg-navy-700 transition-colors"
+          >
+            All Events
+          </a>
           {[
             { value: "7", label: "7d" },
             { value: "30", label: "30d" },
@@ -161,234 +187,434 @@ const maxPV = Math.max(...pTimeseries.map((r: any) => r.pageviews || 0), 1);
         <>
           <p class="text-sm text-slate-500">{periodLabel} · <span class="text-slate-400">Updated just now</span></p>
 
-          {/* ── Row 1: KPI Cards ── */}
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Page Views</p>
-              <p class="text-3xl font-black">{fNum(pageviews)}</p>
-              <p class="text-xs text-slate-500 mt-1">Plausible</p>
-            </div>
-            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Unique Visitors</p>
-              <p class="text-3xl font-black">{fNum(visitors)}</p>
-              <p class="text-xs text-slate-500 mt-1">Plausible</p>
-            </div>
-            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Active Subscribers</p>
-              <p class="text-3xl font-black text-bull">{stripeStats?.netSubscribers ?? "—"}</p>
-              <p class="text-xs text-slate-500 mt-1">All time</p>
-            </div>
-            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">MRR</p>
-              <p class="text-3xl font-black text-gold-500">{stripeStats ? fMoney(stripeStats.mrr) : "—"}</p>
-              <p class="text-xs text-slate-500 mt-1">Est. monthly</p>
-            </div>
+          {/* ── Tab Navigation ── */}
+          <div class="flex gap-1 bg-navy-900 rounded-lg p-1" id="tab-nav">
+            <button data-tab="overview" class="tab-btn tab-active px-4 py-2 text-sm font-medium rounded-md transition-colors">Overview</button>
+            <button data-tab="revenue" class="tab-btn px-4 py-2 text-sm font-medium rounded-md transition-colors text-slate-400 hover:text-slate-200">Revenue</button>
           </div>
 
-          {/* ── Row 2: Engagement Metrics ── */}
-          <div class="grid grid-cols-3 gap-4">
-            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Bounce Rate</p>
-              <p class="text-2xl font-black">{fPct(bounceRate)}</p>
-              <p class="text-xs text-slate-500 mt-1">Left without clicking</p>
-            </div>
-            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Avg Visit Duration</p>
-              <p class="text-2xl font-black">{fDur(visitDuration)}</p>
-              <p class="text-xs text-slate-500 mt-1">Time on page</p>
-            </div>
-            <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-              <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Conversion Rate</p>
-              <p class="text-2xl font-black text-bull">{fPct(conversionRate)}</p>
-              <p class="text-xs text-slate-500 mt-1">New subs / visitors</p>
-            </div>
-          </div>
+          {/* ══════════════════════════════════════════ */}
+          {/* ── OVERVIEW TAB ── */}
+          {/* ══════════════════════════════════════════ */}
+          <div id="tab-overview" class="tab-content space-y-6">
 
-          {/* ── Row 3: Pageviews Sparkline ── */}
-          {pTimeseries.length > 0 && (
+            {/* ── KPI Cards ── */}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Page Views</p>
+                <p class="text-3xl font-black">{fNum(pageviews)}</p>
+                <p class="text-xs text-slate-500 mt-1">Plausible</p>
+              </div>
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Unique Visitors</p>
+                <p class="text-3xl font-black">{fNum(visitors)}</p>
+                <p class="text-xs text-slate-500 mt-1">Plausible</p>
+              </div>
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Active Subscribers</p>
+                <p class="text-3xl font-black text-bull">{liveStripe.activeSubscribers}</p>
+                <p class="text-xs text-slate-500 mt-1">Stripe live</p>
+              </div>
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">MRR</p>
+                <p class="text-3xl font-black text-gold-500">{fMoney(liveStripe.mrr)}</p>
+                <p class="text-xs text-slate-500 mt-1">Stripe live</p>
+              </div>
+            </div>
+
+            {/* ── Engagement Metrics ── */}
+            <div class="grid grid-cols-3 gap-4">
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Bounce Rate</p>
+                <p class="text-2xl font-black">{fPct(bounceRate)}</p>
+                <p class="text-xs text-slate-500 mt-1">Left without clicking</p>
+              </div>
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Avg Visit Duration</p>
+                <p class="text-2xl font-black">{fDur(visitDuration)}</p>
+                <p class="text-xs text-slate-500 mt-1">Time on page</p>
+              </div>
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Conversion Rate</p>
+                <p class="text-2xl font-black text-bull">{fPct(conversionRate)}</p>
+                <p class="text-xs text-slate-500 mt-1">New subs / visitors</p>
+              </div>
+            </div>
+
+            {/* ── Pageviews Chart (Chart.js) ── */}
             <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
-              <h2 class="text-lg font-bold mb-4">Pageviews Over Time</h2>
-              <div class="flex items-end gap-1 h-24">
-                {pTimeseries.map((r: any) => {
-                  const h = Math.max((r.pageviews / maxPV) * 100, 2);
-                  return (
-                    <div class="flex-1 flex flex-col items-center gap-1 group relative">
-                      <div
-                        class="w-full bg-gold-500/60 rounded-t hover:bg-gold-500 transition-colors"
-                        style={`height: ${h}%`}
-                        title={`${r.date}: ${r.pageviews} views, ${r.visitors} visitors`}
-                      ></div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div class="flex justify-between text-xs text-slate-600 mt-1">
-                <span>{pTimeseries[0]?.date}</span>
-                <span>{pTimeseries[Math.floor(pTimeseries.length / 2)]?.date}</span>
-                <span>{pTimeseries[pTimeseries.length - 1]?.date}</span>
+              <h2 class="text-lg font-bold mb-4">Pageviews & Visitors Over Time</h2>
+              <div class="h-64">
+                <canvas id="pageviewsChart"></canvas>
               </div>
             </div>
-          )}
 
-          {/* ── Row 4: Sources + Devices ── */}
-          <div class="grid lg:grid-cols-2 gap-4">
-
-            {/* Traffic Sources */}
-            <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
-              <div class="px-6 py-4 border-b border-navy-700">
-                <h2 class="text-lg font-bold">Traffic Sources</h2>
-              </div>
-              <div class="divide-y divide-navy-700/50">
-                {pSources.length === 0 ? (
-                  <p class="px-6 py-8 text-center text-slate-500">No source data yet</p>
-                ) : (
-                  pSources.map((s: any, i: number) => {
-                    const max = pSources[0]?.visitors || 1;
-                    const w = (s.visitors / max) * 100;
-                    return (
-                      <div class="px-6 py-3 flex items-center gap-3">
-                        <span class="text-xs text-slate-500 w-4">{i + 1}</span>
-                        <div class="flex-1 min-w-0">
-                          <p class="text-sm font-medium truncate">{s.source || "Direct / None"}</p>
-                          <div class="h-1.5 bg-navy-900 rounded mt-1">
-                            <div class="h-full bg-gold-500/50 rounded" style={`width: ${w}%`}></div>
+            {/* ── Sources + Devices ── */}
+            <div class="grid lg:grid-cols-2 gap-4">
+              {/* Traffic Sources */}
+              <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-navy-700">
+                  <h2 class="text-lg font-bold">Traffic Sources</h2>
+                </div>
+                <div class="divide-y divide-navy-700/50">
+                  {pSources.length === 0 ? (
+                    <p class="px-6 py-8 text-center text-slate-500">No source data yet</p>
+                  ) : (
+                    pSources.map((s: any, i: number) => {
+                      const max = pSources[0]?.visitors || 1;
+                      const w = (s.visitors / max) * 100;
+                      return (
+                        <div class="px-6 py-3 flex items-center gap-3">
+                          <span class="text-xs text-slate-500 w-4">{i + 1}</span>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium truncate">{s.source || "Direct / None"}</p>
+                            <div class="h-1.5 bg-navy-900 rounded mt-1">
+                              <div class="h-full bg-gold-500/50 rounded" style={`width: ${w}%`}></div>
+                            </div>
+                          </div>
+                          <div class="text-right">
+                            <p class="text-sm font-bold">{fNum(s.visitors)}</p>
+                            <p class="text-xs text-slate-500">{fNum(s.pageviews)} views</p>
                           </div>
                         </div>
-                        <div class="text-right">
-                          <p class="text-sm font-bold">{fNum(s.visitors)}</p>
-                          <p class="text-xs text-slate-500">{fNum(s.pageviews)} views</p>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Device Breakdown */}
+              <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
+                <h2 class="text-lg font-bold mb-4">Device Breakdown</h2>
+                {pDevices.length === 0 ? (
+                  <p class="text-center text-slate-500 py-8">No device data yet</p>
+                ) : (
+                  <div class="space-y-4">
+                    {pDevices.map((d: any) => {
+                      const total = pDevices.reduce((s: number, x: any) => s + x.visitors, 0);
+                      const pct = total > 0 ? (d.visitors / total) * 100 : 0;
+                      const icon = d.device === "Mobile" ? "📱" : d.device === "Tablet" ? "📟" : "🖥️";
+                      const color = d.device === "Mobile" ? "bg-gold-500" : d.device === "Desktop" ? "bg-bull" : "bg-slate-500";
+                      return (
+                        <div>
+                          <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-medium">{icon} {d.device || "Unknown"}</span>
+                            <span class="text-sm text-slate-400">{fNum(d.visitors)} ({fPct(pct)})</span>
+                          </div>
+                          <div class="h-3 bg-navy-900 rounded overflow-hidden">
+                            <div class={`h-full rounded ${color}`} style={`width: ${Math.max(pct, 2)}%`}></div>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Device Breakdown */}
-            <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
-              <h2 class="text-lg font-bold mb-4">Device Breakdown</h2>
-              {pDevices.length === 0 ? (
-                <p class="text-center text-slate-500 py-8">No device data yet</p>
-              ) : (
-                <div class="space-y-4">
-                  {pDevices.map((d: any) => {
-                    const total = pDevices.reduce((s: number, x: any) => s + x.visitors, 0);
-                    const pct = total > 0 ? (d.visitors / total) * 100 : 0;
-                    const icon = d.device === "Mobile" ? "📱" : d.device === "Tablet" ? "📟" : "🖥️";
-                    const color = d.device === "Mobile" ? "bg-gold-500" : d.device === "Desktop" ? "bg-bull" : "bg-slate-500";
-                    return (
-                      <div>
-                        <div class="flex items-center justify-between mb-1">
-                          <span class="text-sm font-medium">{icon} {d.device || "Unknown"}</span>
-                          <span class="text-sm text-slate-400">{fNum(d.visitors)} ({fPct(pct)})</span>
-                        </div>
-                        <div class="h-3 bg-navy-900 rounded overflow-hidden">
-                          <div class={`h-full rounded ${color}`} style={`width: ${Math.max(pct, 2)}%`}></div>
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* ── Countries ── */}
+            {pCountries.length > 0 && (
+              <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-navy-700">
+                  <h2 class="text-lg font-bold">Top Countries</h2>
                 </div>
-              )}
-            </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-navy-700">
+                  {pCountries.slice(0, 8).map((c: any) => (
+                    <div class="px-6 py-4">
+                      <p class="text-sm font-medium">{c.country}</p>
+                      <p class="text-xl font-bold mt-1">{fNum(c.visitors)}</p>
+                      <p class="text-xs text-slate-500">{fNum(c.pageviews)} views</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </div>
 
-          {/* ── Row 5: Countries ── */}
-          {pCountries.length > 0 && (
+          {/* ══════════════════════════════════════════ */}
+          {/* ── REVENUE TAB ── */}
+          {/* ══════════════════════════════════════════ */}
+          <div id="tab-revenue" class="tab-content space-y-6 hidden">
+
+            {/* ── Stripe Summary Cards ── */}
+            {stripeStats && (
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                  <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">New Subs ({periodLabel})</p>
+                  <p class="text-3xl font-black text-bull">+{stripeStats.newSubscriptions}</p>
+                </div>
+                <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                  <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Cancellations ({periodLabel})</p>
+                  <p class="text-3xl font-black text-bear">-{stripeStats.cancellations}</p>
+                </div>
+                <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                  <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Period Revenue</p>
+                  <p class="text-3xl font-black text-gold-500">{fMoney(stripeStats.periodRevenue)}</p>
+                </div>
+                <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
+                  <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Net Change</p>
+                  <p class={`text-3xl font-black ${stripeStats.newSubscriptions - stripeStats.cancellations >= 0 ? "text-bull" : "text-bear"}`}>
+                    {stripeStats.newSubscriptions - stripeStats.cancellations >= 0 ? "+" : ""}{stripeStats.newSubscriptions - stripeStats.cancellations}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ── MRR Over Time Chart ── */}
+            <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
+              <h2 class="text-lg font-bold mb-4">MRR Over Time</h2>
+              <div class="h-64">
+                <canvas id="mrrChart"></canvas>
+              </div>
+            </div>
+
+            {/* ── Conversion Rate Over Time ── */}
+            <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
+              <h2 class="text-lg font-bold mb-4">Conversion Rate Over Time</h2>
+              <div class="h-64">
+                <canvas id="conversionChart"></canvas>
+              </div>
+            </div>
+
+            {/* ── Subscriber Growth ── */}
+            <div class="rounded-xl bg-navy-800 border border-navy-700 p-6">
+              <h2 class="text-lg font-bold mb-4">Subscriber Growth</h2>
+              <div class="h-64">
+                <canvas id="subscriberChart"></canvas>
+              </div>
+            </div>
+
+            {/* ── Recent Stripe Events ── */}
             <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
-              <div class="px-6 py-4 border-b border-navy-700">
-                <h2 class="text-lg font-bold">Top Countries</h2>
+              <div class="px-6 py-4 border-b border-navy-700 flex items-center justify-between">
+                <h2 class="text-lg font-bold">Recent Stripe Events</h2>
+                <div class="flex items-center gap-3">
+                  <span class="inline-flex items-center gap-1 text-xs text-bull">
+                    <span class="w-1.5 h-1.5 bg-bull rounded-full animate-pulse"></span>
+                    Live
+                  </span>
+                  <a href={`/events?token=${urlToken || ""}`} class="text-xs text-gold-500 hover:text-gold-400 font-medium">
+                    View All →
+                  </a>
+                </div>
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-navy-700">
-                {pCountries.slice(0, 8).map((c: any) => (
-                  <div class="px-6 py-4">
-                    <p class="text-sm font-medium">{c.country}</p>
-                    <p class="text-xl font-bold mt-1">{fNum(c.visitors)}</p>
-                    <p class="text-xs text-slate-500">{fNum(c.pageviews)} views</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Row 6: Stripe Summary ── */}
-          {stripeStats && (
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">New Subs ({periodLabel})</p>
-                <p class="text-3xl font-black text-bull">+{stripeStats.newSubscriptions}</p>
-              </div>
-              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Cancellations ({periodLabel})</p>
-                <p class="text-3xl font-black text-bear">-{stripeStats.cancellations}</p>
-              </div>
-              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Period Revenue</p>
-                <p class="text-3xl font-black text-gold-500">{fMoney(stripeStats.periodRevenue)}</p>
-              </div>
-              <div class="rounded-xl bg-navy-800 border border-navy-700 p-5">
-                <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Net Change</p>
-                <p class={`text-3xl font-black ${stripeStats.newSubscriptions - stripeStats.cancellations >= 0 ? "text-bull" : "text-bear"}`}>
-                  {stripeStats.newSubscriptions - stripeStats.cancellations >= 0 ? "+" : ""}{stripeStats.newSubscriptions - stripeStats.cancellations}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* ── Row 7: Recent Stripe Events ── */}
-          <div class="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
-            <div class="px-6 py-4 border-b border-navy-700 flex items-center justify-between">
-              <h2 class="text-lg font-bold">Recent Stripe Events</h2>
-              <span class="inline-flex items-center gap-1 text-xs text-bull">
-                <span class="w-1.5 h-1.5 bg-bull rounded-full animate-pulse"></span>
-                Live
-              </span>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-sm">
-                <thead>
-                  <tr class="text-left text-slate-500 border-b border-navy-700 text-xs">
-                    <th class="px-6 py-3 font-medium">Time</th>
-                    <th class="px-6 py-3 font-medium">Type</th>
-                    <th class="px-6 py-3 font-medium">Email</th>
-                    <th class="px-6 py-3 font-medium text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentConversions.length === 0 ? (
-                    <tr>
-                      <td colspan="4" class="px-6 py-8 text-center text-slate-500">No Stripe events yet</td>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-left text-slate-500 border-b border-navy-700 text-xs">
+                      <th class="px-6 py-3 font-medium">Time (ET)</th>
+                      <th class="px-6 py-3 font-medium">Type</th>
+                      <th class="px-6 py-3 font-medium">Email</th>
+                      <th class="px-6 py-3 font-medium text-right">Amount</th>
                     </tr>
-                  ) : (
-                    recentConversions.map((c: any) => (
-                      <tr class="border-b border-navy-700/30 hover:bg-navy-700/20">
-                        <td class="px-6 py-3 text-slate-500 whitespace-nowrap text-xs">{fDate(c.created_at)}</td>
-                        <td class="px-6 py-3">
-                          <span class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                            c.event_type === "new_subscription" ? "bg-bull/10 text-bull" : "bg-bear/10 text-bear"
-                          }`}>
-                            {c.event_type === "new_subscription" ? "✓ New Sub" : "✗ Cancelled"}
-                          </span>
-                        </td>
-                        <td class="px-6 py-3 text-slate-300">{c.customer_email || "—"}</td>
-                        <td class="px-6 py-3 text-right font-bold text-gold-400">
-                          {c.amount ? fMoney(c.amount) + "/mo" : "—"}
-                        </td>
+                  </thead>
+                  <tbody>
+                    {recentConversions.length === 0 ? (
+                      <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-slate-500">No Stripe events yet</td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      recentConversions.map((c: any) => (
+                        <tr class="border-b border-navy-700/30 hover:bg-navy-700/20">
+                          <td class="px-6 py-3 text-slate-500 whitespace-nowrap text-xs">{fDate(c.created_at)}</td>
+                          <td class="px-6 py-3">
+                            <span class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+                              c.event_type === "new_subscription" ? "bg-bull/10 text-bull" : "bg-bear/10 text-bear"
+                            }`}>
+                              {c.event_type === "new_subscription" ? "✓ New Sub" : "✗ Cancelled"}
+                            </span>
+                          </td>
+                          <td class="px-6 py-3 text-slate-300">{c.customer_email || "—"}</td>
+                          <td class="px-6 py-3 text-right font-bold text-gold-400">
+                            {c.amount ? fMoney(c.amount) + "/mo" : "—"}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
           </div>
         </>
       )}
     </main>
   </div>
 
-  <script is:inline>
-    // Auto-refresh every 60 seconds
+  <!-- Chart.js CDN (loaded once, cached) -->
+  <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <script is:inline define:vars={{ pTimeseries, mrrHistory, pTimeseries_visitors: pTimeseries }}>
+    // ── Tab switching ──
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.remove('tab-active');
+          b.classList.add('text-slate-400');
+        });
+        document.getElementById('tab-' + tab)?.classList.remove('hidden');
+        btn.classList.add('tab-active');
+        btn.classList.remove('text-slate-400');
+      });
+    });
+
+    // ── Chart defaults for dark theme ──
+    const chartDefaults = {
+      color: '#94a3b8',
+      borderColor: 'rgba(51, 65, 85, 0.5)',
+    };
+    Chart.defaults.color = chartDefaults.color;
+    Chart.defaults.borderColor = chartDefaults.borderColor;
+
+    const gridColor = 'rgba(51, 65, 85, 0.4)';
+
+    // ── Pageviews & Visitors Chart ──
+    const pvCtx = document.getElementById('pageviewsChart');
+    if (pvCtx && pTimeseries.length > 0) {
+      new Chart(pvCtx, {
+        type: 'line',
+        data: {
+          labels: pTimeseries.map(r => r.date),
+          datasets: [
+            {
+              label: 'Pageviews',
+              data: pTimeseries.map(r => r.pageviews),
+              borderColor: '#eab308',
+              backgroundColor: 'rgba(234, 179, 8, 0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 2,
+            },
+            {
+              label: 'Visitors',
+              data: pTimeseries.map(r => r.visitors),
+              borderColor: '#22c55e',
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 2,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 7, font: { size: 11 } } },
+            y: { grid: { color: gridColor }, beginAtZero: true, ticks: { font: { size: 11 } } }
+          },
+          plugins: { legend: { labels: { usePointStyle: true, padding: 16 } } }
+        }
+      });
+    }
+
+    // ── MRR Over Time Chart ──
+    const mrrCtx = document.getElementById('mrrChart');
+    if (mrrCtx && mrrHistory.length > 0) {
+      new Chart(mrrCtx, {
+        type: 'line',
+        data: {
+          labels: mrrHistory.map(r => r.month),
+          datasets: [{
+            label: 'Monthly Revenue ($)',
+            data: mrrHistory.map(r => Number(r.revenue)),
+            borderColor: '#eab308',
+            backgroundColor: 'rgba(234, 179, 8, 0.15)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: gridColor }, beginAtZero: true, ticks: { callback: v => '$' + v, font: { size: 11 } } }
+          },
+          plugins: { legend: { labels: { usePointStyle: true, padding: 16 } } }
+        }
+      });
+    }
+
+    // ── Conversion Rate Over Time ──
+    const convCtx = document.getElementById('conversionChart');
+    if (convCtx && pTimeseries.length > 0) {
+      // Calculate daily conversion rate: conversions per day / visitors per day
+      // We show visitors trend as a proxy (conversions happen at Stripe level, not tracked daily in timeseries)
+      new Chart(convCtx, {
+        type: 'line',
+        data: {
+          labels: pTimeseries.map(r => r.date),
+          datasets: [{
+            label: 'Visitors',
+            data: pTimeseries.map(r => r.visitors),
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 7, font: { size: 11 } } },
+            y: { grid: { color: gridColor }, beginAtZero: true, ticks: { font: { size: 11 } } }
+          },
+          plugins: { legend: { labels: { usePointStyle: true, padding: 16 } } }
+        }
+      });
+    }
+
+    // ── Subscriber Growth Chart ──
+    const subCtx = document.getElementById('subscriberChart');
+    if (subCtx && mrrHistory.length > 0) {
+      new Chart(subCtx, {
+        type: 'bar',
+        data: {
+          labels: mrrHistory.map(r => r.month),
+          datasets: [
+            {
+              label: 'New Subs',
+              data: mrrHistory.map(r => Number(r.new_subs)),
+              backgroundColor: 'rgba(34, 197, 94, 0.7)',
+              borderRadius: 4,
+            },
+            {
+              label: 'Cancellations',
+              data: mrrHistory.map(r => -Number(r.cancels)),
+              backgroundColor: 'rgba(239, 68, 68, 0.7)',
+              borderRadius: 4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: gridColor }, stacked: true, ticks: { font: { size: 11 } } },
+            y: { grid: { color: gridColor }, stacked: true, ticks: { font: { size: 11 } } }
+          },
+          plugins: { legend: { labels: { usePointStyle: true, padding: 16 } } }
+        }
+      });
+    }
+
+    // ── Auto-refresh every 60 seconds ──
     setTimeout(() => location.reload(), 60000);
   </script>
+
+  <style is:inline>
+    .tab-active {
+      background-color: rgba(234, 179, 8, 0.15);
+      color: #eab308;
+    }
+  </style>
 </Layout>
