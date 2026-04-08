@@ -261,7 +261,7 @@ export async function getConversionStats(days: number) {
     newSubscriptions: Number(newSubs.total),
     cancellations: Number(cancels.total),
     netSubscribers: Math.max(netSubscribers, 0),
-    mrr: Math.max(netSubscribers, 0) * 39.99,
+    mrr: Math.max(netSubscribers, 0) * 49.99,
     periodRevenue: Number(newSubs.revenue),
   };
 }
