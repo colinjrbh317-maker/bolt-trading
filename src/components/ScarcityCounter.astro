@@ -41,7 +41,7 @@ const total = siteConfig.spots.total;
 
       <!-- CTA -->
       <a href={ctaUrl} class="btn-cta" data-scarcity-cta data-track="cta" data-track-label="scarcity_cta">
-        Claim Your Spot Now
+        Claim Your Spot — $1 Trial
       </a>
     </div>
   </div>
@@ -77,7 +77,7 @@ const total = siteConfig.spots.total;
       });
       // Update Hero badge spots
       document.querySelectorAll('[data-spots-remaining]').forEach(el => {
-        el.innerHTML = 'Only <span class="text-gold-500 font-bold">' + spotsLeft + ' spot' + (spotsLeft !== 1 ? 's' : '') + '</span> remaining — Cancel anytime';
+        el.innerHTML = 'Only <span class="text-gold-500 font-bold">' + spotsLeft + ' spot' + (spotsLeft !== 1 ? 's' : '') + '</span> remaining — Just $1 to get inside';
       });
 
       // Handle sold out

@@ -11,7 +11,7 @@ const { price, stripeLink } = Astro.props;
 const spotsLeft = siteConfig.spots.total - siteConfig.spots.claimed;
 const isSoldOut = spotsLeft <= 0;
 const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
-const ctaText = isSoldOut ? "Join the Waitlist" : `Join The Market Matchup — $${price}/mo`;
+const ctaText = isSoldOut ? "Join the Waitlist" : "Start Your $1 Trial — Full Access for 24 Hours";
 ---
 
 <section class="relative bg-candlestick min-h-[90vh] flex items-center">
@@ -58,7 +58,7 @@ const ctaText = isSoldOut ? "Join the Waitlist" : `Join The Market Matchup — $
       </a>
 
       <p class="text-sm text-slate-500" data-spots-remaining>
-        Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Cancel anytime
+        Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Just $1 to try, cancel anytime
       </p>
     </div>
   </div>

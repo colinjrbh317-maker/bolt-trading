@@ -18,7 +18,7 @@ const benefits = [
   "Options education, market structure, and risk management channels",
   "Ask-anything Q&A channel — no question too basic",
   "400+ active members, daily recaps, giveaways, and real community",
-  "No contracts — cancel anytime, instant Discord access on signup",
+  "Full 24-hour access — cancel before it ends if it's not for you",
 ];
 ---
 
@@ -41,10 +41,10 @@ const benefits = [
           <!-- Price -->
           <div class="text-center mb-8">
             <div class="flex items-baseline justify-center gap-1">
-              <span class="text-5xl md:text-6xl font-black text-slate-100">${price}</span>
-              <span class="text-xl text-slate-500">/month</span>
+              <span class="text-5xl md:text-6xl font-black text-slate-100">$1</span>
+              <span class="text-xl text-slate-500">for 24 hours</span>
             </div>
-            <p class="text-sm text-slate-500 mt-2">Cancel anytime — no contracts</p>
+            <p class="text-sm text-gold-500 font-semibold mt-2">Full access — experience everything before you commit</p>
           </div>
 
           <!-- Divider -->
@@ -70,11 +70,11 @@ const benefits = [
 
           <!-- CTA -->
           <a href={ctaUrl} class="btn-cta w-full text-center block" data-track="cta" data-track-label="pricing_cta">
-            {isSoldOut ? "Join the Waitlist" : `Join The Market Matchup — $${price}/mo`}
+            {isSoldOut ? "Join the Waitlist" : "Start Your $1 Trial Now"}
           </a>
 
           <p class="text-center text-sm text-slate-500 mt-4">
-            No hidden fees. Cancel with one click, anytime. You're in control.
+            Just $1 for full 24-hour access. No hidden fees. Cancel anytime — you're in control.
           </p>
         </div>
       </div>
