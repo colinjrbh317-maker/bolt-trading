@@ -19,7 +19,7 @@ export const siteConfig = {
   memberCount: 400, // "X+ active traders"
 
   // Pricing
-  price: 1,
+  price: 0,
   priceInterval: "day",
 
   // Bolt's socials

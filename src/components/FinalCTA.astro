@@ -21,20 +21,20 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
     <div class="max-w-3xl mx-auto text-center fade-in">
       <h2 class="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-6">
         The Next Alert Drops Tomorrow Morning.
-        <span class="text-gold-gradient"> Be in the Room for $1.</span>
+        <span class="text-gold-gradient"> Be in the Room.</span>
       </h2>
 
       <p class="text-lg text-slate-400 leading-relaxed mb-10 max-w-2xl mx-auto">
         <span data-spots-left>{spotsLeft} Spots</span> left. One community. The traders inside are already positioned.
-        For just $1 you get full access for 24 hours — see the alerts, the community, everything. Then decide.
+        Try it free for 24 hours — see the alerts, the community, everything. Then decide.
       </p>
 
       <a href={ctaUrl} class="btn-cta btn-cta-lg" data-track="cta" data-track-label="final_cta">
-        {isSoldOut ? "Join the Waitlist" : "Try It for $1 — Full Access for 24 Hours"}
+        {isSoldOut ? "Join the Waitlist" : "Try It Free — Full Access for 24 Hours"}
       </a>
 
       <p class="text-sm text-slate-500 mt-4" data-spots-remaining>
-        Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Just $1 to get inside
+        Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Free for 24 hours
       </p>
     </div>
   </div>
