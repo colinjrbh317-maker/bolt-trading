@@ -4,7 +4,7 @@
 
 export const siteConfig = {
   // Stripe checkout URL
-  stripeUrl: "https://buy.stripe.com/28E28t61WfRW94v9te3840x",
+  stripeUrl: "https://buy.stripe.com/3cI4gBbmgbBG1C3cFq3840G",
 
   // Scarcity — Rolling cohort
   spots: {
@@ -19,8 +19,8 @@ export const siteConfig = {
   memberCount: 400, // "X+ active traders"
 
   // Pricing
-  price: 0,
-  priceInterval: "day",
+  price: 49.99,
+  priceInterval: "month",
 
   // Bolt's socials
   tiktokUrl: "https://tiktok.com/@bolt.trades",

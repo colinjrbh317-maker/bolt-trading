@@ -26,15 +26,15 @@ const ctaUrl = isSoldOut ? siteConfig.waitlistUrl : stripeLink;
 
       <p class="text-lg text-slate-400 leading-relaxed mb-10 max-w-2xl mx-auto">
         <span data-spots-left>{spotsLeft} Spots</span> left. One community. The traders inside are already positioned.
-        Try it free for 24 hours — see the alerts, the community, everything. Then decide.
+        The only question is whether you'll keep watching the recap — or start trading the setup.
       </p>
 
       <a href={ctaUrl} class="btn-cta btn-cta-lg" data-track="cta" data-track-label="final_cta">
-        {isSoldOut ? "Join the Waitlist" : "Try It Free — Full Access for 24 Hours"}
+        {isSoldOut ? "Join the Waitlist" : `Join The Market Matchup Now — $${price}/mo`}
       </a>
 
       <p class="text-sm text-slate-500 mt-4" data-spots-remaining>
-        Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Free for 24 hours
+        Only <span class="text-gold-500 font-bold">{spotsLeft} spots</span> remaining — Cancel anytime
       </p>
     </div>
   </div>
